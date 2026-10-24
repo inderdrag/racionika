@@ -28,6 +28,10 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          # Default includes obsolete 'tools', which is no longer available.
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: 'false'
       - run: sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
       - run: npm ci
       - run: node scripts/android-config.mjs

@@ -29,3 +29,8 @@
 - Render переключён на API без раздачи сайта; добавлена сборка build:server.
 - Ручной GitHub Actions workflow Android APK принимает только публичный HTTPS URL сервера и публикует тестовый debug APK как artifact при успешной сборке.
 - Перед сборкой APK проверяется адрес API, ключ AnyModel остаётся на Render. Удалённая Android-сборка ещё не подтверждена.
+
+## Исправление Android SDK setup — 2026-10-24
+
+- setup-android@v3 получает packages: platform-tools вместо дефолтного tools platform-tools. Устаревший tools вызвал сбой первого удалённого запуска до сборки приложения.
+- Вывод текста лицензий сокращён; отдельный шаг установки Platform 36 / Build Tools 36.0.0 сохранён. Успех повторной APK-сборки пока не подтверждён.

@@ -49,3 +49,7 @@ Render Blueprint переведён на API-only: SERVE_WEB=false, npm run buil
 API-only режим дополнительно проверен с фиктивной production-конфигурацией без запросов к ИИ: / → 404, /health → 200, /v1/config → provider:anymodel. Проверки формата, lint, typecheck, 61 Vitest-тест и 4 Node-теста конфигурации прошли. Сборка shared + server успешна. npm audit --omit=dev: 0; полный npm audit сообщил 9 проблем в dev-зависимостях (7 moderate, 2 critical, включая цепочку Vitest/tinypool). Обновление инструментов требует отдельной проверки совместимости; нулевых проблем во всех зависимостях не заявляем.
 
 Сборка интерфейса с фиктивным HTTPS API URL и cap sync android прошли: обнаружены 10 Android-плагинов. Платных сетевых запросов не было. Это проверка подготовки Android-проекта, не Gradle assembleDebug и не проверка установки APK.
+
+## Первый удалённый запуск APK: исправление SDK setup
+
+По логу пользователя workflow остановился до npm/Gradle: setup-android@v3 вызвал sdkmanager tools и получил Failed to find package 'tools'. Причина — пакет tools в значении packages по умолчанию. Workflow теперь явно передаёт packages: platform-tools; SDK Platform 36 и Build Tools 36.0.0 устанавливаются следующим шагом. Подробный вывод текста лицензий отключён. Повторная удалённая сборка после исправления ещё не подтверждена.
