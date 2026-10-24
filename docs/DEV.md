@@ -28,7 +28,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 notepad server/.env
 ```
 
-В локальном `server/.env`: заполните ANYMODEL_API_KEY ключом AnyModel, JWT_SECRET результатом генератора, APP_ACCESS_CODE личным кодом доступа. MOCK_AI=false. Не присылайте ключ в чат и не коммитьте .env. Затем:
+В локальном `server/.env`: заполните ANYMODEL_API_KEY ключом AnyModel, JWT_SECRET результатом генератора, REQUIRE_ACCESS_CODE=false (поле кода в APK отсутствует). MOCK_AI=false. Не присылайте ключ в чат и не коммитьте .env. Затем:
 
 ```powershell
 npm.cmd run dev

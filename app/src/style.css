@@ -940,3 +940,124 @@ dialog > .subtle {
 .coach-card .field textarea {
   font-size: 16px;
 }
+.onboarding-shell {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+.profile-form {
+  padding: 24px;
+}
+.profile-form .wordmark {
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+.profile-form h1 {
+  margin: 8px 0 24px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.field input,
+.field select {
+  min-width: 0;
+}
+.profile-card,
+.notification-settings {
+  display: grid;
+  gap: 16px;
+}
+.notification-settings form,
+.profile-card form {
+  display: grid;
+  gap: 16px;
+}
+.notification-settings .consent {
+  margin: 0;
+}
+.profile-card .field,
+.notification-settings .field {
+  margin: 0;
+}
+.profile-card .secondary,
+.notification-settings .primary {
+  width: 100%;
+}
+.profile-form .primary {
+  width: 100%;
+  margin-top: 16px;
+}
+.plan-preview {
+  background: var(--surface-soft);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 20px 0;
+  display: grid;
+  gap: 10px;
+}
+.plan-preview > strong {
+  font-size: 32px;
+  color: var(--accent);
+}
+.plan-preview strong small {
+  font-size: 16px;
+}
+.profile-greeting {
+  margin: 12px 0;
+}
+.onboarding-consent {
+  margin-top: 20px;
+}
+.schedule-preview {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  font-weight: 600;
+}
+.import-preview {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-soft);
+  border-radius: 16px;
+}
+.custom-water {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 16px;
+}
+.custom-water .field {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.custom-water button {
+  padding: 12px;
+}
+.daily-support p {
+  margin-top: 12px;
+}
+.weight-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.weight-history li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+.weight-history li > span {
+  flex: 1;
+}
+.coach-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}

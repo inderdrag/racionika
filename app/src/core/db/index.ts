@@ -13,6 +13,12 @@ export interface FoodEntry {
   baseGrams?: number;
 }
 
+export interface WeightLog {
+  id: string;
+  day: string;
+  kg: number;
+  createdAt: string;
+}
 export interface WaterLog {
   id: string;
   day: string;
@@ -34,6 +40,7 @@ export interface ChatMessage {
 }
 export class DiaryDatabase extends Dexie {
   foodEntries!: Table<FoodEntry, string>;
+  weightLogs!: Table<WeightLog, string>;
   waterLogs!: Table<WaterLog, string>;
   aiCache!: Table<AiCache, string>;
   chatMessages!: Table<ChatMessage, string>;
@@ -45,6 +52,13 @@ export class DiaryDatabase extends Dexie {
       waterLogs: 'id, day, createdAt',
       aiCache: 'hash, createdAt',
       chatMessages: 'id, createdAt',
+    });
+    this.version(3).stores({
+      foodEntries: 'id, day, createdAt',
+      waterLogs: 'id, day, createdAt',
+      aiCache: 'hash, createdAt',
+      chatMessages: 'id, createdAt',
+      weightLogs: 'id, day, createdAt',
     });
   }
 }

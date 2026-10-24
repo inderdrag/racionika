@@ -44,3 +44,49 @@
     --danger: #ffaba4;
   }
 }
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  color-scheme: light dark;
+  --bg: #f5f8f5;
+  --surface: #fff;
+  --surface-soft: #eaf3ee;
+  --text: #1c302b;
+  --muted: #586c64;
+  --line: #dbe5de;
+  --accent: #187362;
+  --accent-text: #fff;
+  --calories: #ac5119;
+  --protein: #2467ad;
+  --carbs: #94610d;
+  --fat: #8d4c96;
+  --water: #256b9d;
+  --danger: #b13430;
+  --radius: 24px;
+  --radius-sm: 16px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s6: 24px;
+  --s8: 32px;
+  --s12: 48px;
+  --font: 'Manrope', sans-serif;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #15221e;
+  --surface: #1e3029;
+  --surface-soft: #243c31;
+  --text: #f3f7f3;
+  --muted: #b4c6bc;
+  --line: #3e5449;
+  --accent: #9bdac0;
+  --accent-text: #15362a;
+  --calories: #ffc18b;
+  --protein: #a5caff;
+  --carbs: #e8c375;
+  --fat: #dfb4ea;
+  --water: #95d2f7;
+  --danger: #ffaba4;
+}

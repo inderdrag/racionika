@@ -1,5 +1,5 @@
 import { z } from 'zod';
-export const APP_VERSION = '0.2.1';
+export const APP_VERSION = '0.3.0';
 export const API_VERSION = 'v1';
 const nonnegative = z.number().finite().min(0);
 export const NutrientsSchema = z
@@ -192,3 +192,5 @@ export type AnalysisResponse = z.infer<typeof AnalysisResponseSchema>;
 export type PublicConfig = z.infer<typeof ConfigSchema>;
 export type ProviderUsage = z.infer<typeof ProviderUsageSchema>;
 export type Ingredient = z.infer<typeof IngredientSchema>;
+
+export { ProfileSchema, type UserProfile } from './profile.js';

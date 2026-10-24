@@ -1,26 +1,28 @@
+import { hasAiConsent, personalPlan } from '../core/profile';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { liveQuery } from 'dexie';
-import type { Nutrients, PublicConfig } from '@racionika/shared';
+import type { Nutrients, PublicConfig, UserProfile } from '@racionika/shared';
 import { db, type ChatMessage, type FoodEntry } from '../core/db';
-import { askCoach, getConfig, setAccessCode, serverLabel } from '../core/ai/client';
+import { askCoach, getConfig } from '../core/ai/client';
 export function Coach({
   day,
   totals,
   entries,
   water,
+  profile,
 }: {
   day: string;
   totals: Nutrients;
   entries: FoodEntry[];
   water: number;
+  profile: UserProfile;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [config, setConfig] = useState<PublicConfig>();
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [consent, setConsent] = useState(localStorage.getItem('racionika.aiConsent') === 'v1');
-  const [code, setCode] = useState('');
+  const consent = hasAiConsent();
   const abort = useRef<AbortController | null>(null);
   useEffect(() => {
     const subscription = liveQuery(() => db.chatMessages.orderBy('createdAt').toArray()).subscribe(
@@ -43,7 +45,6 @@ export function Coach({
     const controller = new AbortController();
     abort.current = controller;
     try {
-      setAccessCode(code);
       const result = await askCoach(
         message,
         JSON.stringify({
@@ -55,10 +56,13 @@ export function Coach({
             grams: entry.grams,
             source: entry.source ?? 'manual',
           })),
-          note: 'Профиль и цели не настроены; не назначать калорийность.',
+          profile,
+          plan: personalPlan(profile),
+          note: 'Числа плана рассчитаны кодом. Не менять цели молча; review означает, что стандартная диета не назначена.',
         }).slice(0, 6000),
         messages.slice(-10).map(({ role, text }) => ({ role, text: text.slice(0, 1500) })),
         controller.signal,
+        personalPlan(profile).status === 'ready' ? profile.goal : 'maintain',
       );
       if (controller.signal.aborted) return;
       await db.chatMessages.bulkAdd([
@@ -104,6 +108,18 @@ export function Coach({
           </div>
         ))}
       </div>
+      <div className="coach-quick-actions">
+        {['Оцени мой день', 'Что съесть на ужин?', 'Поддержи меня'].map((message) => (
+          <button
+            type="button"
+            className="text-button"
+            key={message}
+            onClick={() => setText(message)}
+          >
+            {message}
+          </button>
+        ))}
+      </div>
       <form onSubmit={(event) => void send(event)}>
         <label className="field">
           Сообщение
@@ -115,27 +131,11 @@ export function Coach({
             required
           />
         </label>
-        {config?.access_code_required && (
-          <label className="field">
-            Код доступа
-            <input type="password" value={code} onChange={(event) => setCode(event.target.value)} />
-          </label>
+        {!consent && (
+          <p className="notice">
+            Включите ИИ в Профиле. Повторное согласие в каждом сообщении не требуется.
+          </p>
         )}
-        <label className="consent">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(event) => {
-              setConsent(event.target.checked);
-              if (event.target.checked) localStorage.setItem('racionika.aiConsent', 'v1');
-              else localStorage.removeItem('racionika.aiConsent');
-            }}
-          />
-          <span>
-            Разрешаю передать сообщение, последние 10 сообщений и сводку выбранного дня на{' '}
-            {serverLabel} и провайдеру {config?.provider ?? 'ИИ'}. История хранится на устройстве.
-          </span>
-        </label>
         {error && (
           <p role="alert" className="error">
             {error}

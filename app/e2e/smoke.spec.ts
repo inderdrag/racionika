@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 test('основная навигация доступна', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Хороший день для себя' })).toBeVisible();

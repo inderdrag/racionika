@@ -1,3 +1,4 @@
+import { hasAiConsent } from '../../core/profile';
 import { useEffect, useRef, useState } from 'react';
 import {
   AnalysisResponseSchema,
@@ -6,14 +7,7 @@ import {
   type Quality,
 } from '@racionika/shared';
 import { db, type FoodEntry } from '../../core/db';
-import {
-  analyzePhotos,
-  analyzeText,
-  getConfig,
-  AiError,
-  setAccessCode,
-  serverLabel,
-} from '../../core/ai/client';
+import { analyzePhotos, analyzeText, getConfig, AiError } from '../../core/ai/client';
 import { compressPhoto, hashAnalysis } from '../../core/ai/images';
 import {
   analysisTotals,
@@ -41,8 +35,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [slow, setSlow] = useState(false);
-  const [consent, setConsent] = useState(localStorage.getItem('racionika.aiConsent') === 'v1');
-  const [access, setAccess] = useState('');
+  const consent = hasAiConsent();
   const [result, setResult] = useState<MealAnalysis | undefined>(editing?.analysis);
   const [demo, setDemo] = useState(editing?.source === 'demo');
   const [baseGrams, setBaseGrams] = useState(editing?.baseGrams ?? editing?.grams ?? 0);
@@ -77,11 +70,6 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
     const timer = setTimeout(() => setSlow(true), 7000);
     return () => clearTimeout(timer);
   }, [busy]);
-  function rememberConsent(value: boolean) {
-    setConsent(value);
-    if (value) localStorage.setItem('racionika.aiConsent', 'v1');
-    else localStorage.removeItem('racionika.aiConsent');
-  }
   function fail(error: unknown) {
     setError(
       error instanceof Error
@@ -126,7 +114,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
   async function analyze() {
     setError('');
     if (!consent) {
-      setError('Сначала подтвердите отправку данных на сервер и провайдеру ИИ.');
+      setError('Включите ИИ в Профиле. Согласие сохраняется один раз.');
       return;
     }
     if (config?.mode === 'disabled') {
@@ -148,7 +136,6 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
     setSlow(false);
     setBusy(true);
     try {
-      setAccessCode(access);
       const contextHint = hint.slice(0, 500);
       const images =
         mode === 'photo'
@@ -442,30 +429,6 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
               <option value="fast">Экономно</option>
               <option value="accurate">Точно — всё равно приблизительная оценка</option>
             </select>
-          </label>
-          {(config?.access_code_required || error.includes('код доступа')) && (
-            <label className="field">
-              Код доступа к серверу
-              <input
-                type="password"
-                value={access}
-                onChange={(e) => setAccess(e.target.value)}
-                autoComplete="off"
-                maxLength={128}
-              />
-            </label>
-          )}
-          <label className="consent">
-            <input
-              type="checkbox"
-              checked={consent}
-              onChange={(e) => rememberConsent(e.target.checked)}
-            />
-            <span>
-              Разрешаю отправить описание и выбранные фото на {serverLabel} и далее провайдеру ИИ.
-              Сервер приложения их не сохраняет; обработка провайдером — по его политике. Отозвать
-              согласие можно в профиле.
-            </span>
           </label>
         </>
       )}

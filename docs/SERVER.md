@@ -1,6 +1,6 @@
 # Сервер 0.2.0
 
-GET /health, GET /v1/config — публичны. POST /v1/register выдаёт JWT на 30 дней после проверки формата версии/устройства и APP_ACCESS_CODE (если задан). JWT HS256 с issuer/audience; устройство в sub — HMAC, не исходный UUID. Все остальные /v1 требуют JWT и минимальную версию приложения.
+GET /health, GET /v1/config — публичны. POST /v1/register выдаёт JWT на 30 дней после проверки формата версии/устройства и APP_ACCESS_CODE (только при REQUIRE_ACCESS_CODE=true). JWT HS256 с issuer/audience; устройство в sub — HMAC, не исходный UUID. Все остальные /v1 требуют JWT и минимальную версию приложения.
 
 POST /v1/analyze-text: text,hint,quality. POST /v1/analyze-meal: images[{mimeType:"image/jpeg",data:base64}],hint,quality. POST /v1/lookup-food: name. POST /v1/coach: message,summary,goal,history. GET /v1/usage — дневные счётчики и UTC-сброс.
 
@@ -8,10 +8,10 @@ POST /v1/analyze-text: text,hint,quality. POST /v1/analyze-meal: images[{mimeTyp
 
 Helmet,CORS allowlist, no-store. API-ключ только env сервера. Нет запросов на произвольный URL пользователя. Нет логирования request/response body, фото, описаний,JWT. Логи старта содержат адрес сервера, не содержание еды. Ошибки клиенту нейтральные. Секреты redacted, но намеренно логировать их нельзя.
 
-**Ограничение:** лимиты в памяти одного процесса. Перезапуск/Render sleep сбрасывает их, несколько инстансов не делят бюджет. Перед публичным запуском нужен постоянный общий счётчик (Redis/Postgres) и edge-защита. JWT-регистрация с UUID сама по себе не доказывает уникальность человека/устройства. Для личного теста обязательно APP_ACCESS_CODE и жёсткий бюджет/alerts у провайдера. Этот код не заявляется как production-ready публичный сервис.
+**Ограничение:** лимиты в памяти одного процесса. Перезапуск/Render sleep сбрасывает их, несколько инстансов не делят бюджет. Перед публичным запуском нужен постоянный общий счётчик (Redis/Postgres) и edge-защита. JWT-регистрация с UUID сама по себе не доказывает уникальность человека/устройства. В Android-only 0.3.0 REQUIRE_ACCESS_CODE=false: код убран по запросу пользователя, JWT выдаётся устройству автоматически. URL не является секретной защитой; любой клиент может регистрировать новые устройства. Обязательны контроль расходов и бюджет/alerts у провайдера; перед распространением — настоящая авторизация и постоянные квоты. Приватный режим REQUIRE_ACCESS_CODE=true оставлен для других клиентов, в APK поля кода больше нет. Этот код не заявляется как production-ready публичный сервис.
 
 TRUST_PROXY_HOPS=0 безопасно не доверяет forwarded IP. За Render/другим прокси сначала определите доверенную топологию; иначе все клиенты могут разделять один IP-лимит. Не включайте безусловный trustProxy=true.
 
 Стоимость — только оценка по опциональным env-ценам fast-модели и полученным токенам. Без цен/для accurate возвращается null. Кеширование,vision,reasoning и попытки с неразбираемым ответом могут сделать реальный счёт другим. Финансовый источник истины — кабинет провайдера.
 
-SERVE_WEB=true раздаёт только app/dist (не корень репозитория и не .env). В production этот режим требует APP_ACCESS_CODE. Build должен установить devDependencies для TypeScript/Vite: npm ci --include=dev && npm run build. Для AnyModel используется отдельный ключ ANYMODEL_API_KEY, фиксированный HTTPS endpoint и точные env-модели без платного автоматического fallback.
+SERVE_WEB=true раздаёт только app/dist (не корень репозитория и не .env). В production этот режим требует REQUIRE_ACCESS_CODE=true и APP_ACCESS_CODE. Build должен установить devDependencies для TypeScript/Vite: npm ci --include=dev && npm run build. Для AnyModel используется отдельный ключ ANYMODEL_API_KEY, фиксированный HTTPS endpoint и точные env-модели без платного автоматического fallback.

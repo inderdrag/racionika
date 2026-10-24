@@ -23,8 +23,8 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: APP_ACCESS_CODE
-        sync: false
+      - key: REQUIRE_ACCESS_CODE
+        value: 'false'
       # Точные ID vision/imageToText из каталога AnyModel, с префиксами.
       # Для первого теста можно задать один и тот же ID в обеих переменных.
       - key: MODEL_FAST

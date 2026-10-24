@@ -43,11 +43,24 @@ describe('Конфигурация публичного сайта', () => {
     expect(() => readConfig(env)).toThrow('APP_ACCESS_CODE');
   });
   it('принимает закрытую конфигурацию сайта', () => {
-    expect(readConfig({ ...env, APP_ACCESS_CODE: 'private-code' })).toMatchObject({
+    expect(
+      readConfig({ ...env, REQUIRE_ACCESS_CODE: 'true', APP_ACCESS_CODE: 'private-code' }),
+    ).toMatchObject({
       serveWeb: true,
       provider: 'anymodel',
       production: true,
       mock: false,
     });
+  });
+});
+
+describe('Вход без ручного кода', () => {
+  it('не использует старый APP_ACCESS_CODE без явного включения', () => {
+    expect(readConfig({ APP_ACCESS_CODE: 'legacy-code' }).accessCode).toBe('');
+  });
+  it('сохраняет опциональный закрытый режим для отдельного сервера', () => {
+    expect(readConfig({ REQUIRE_ACCESS_CODE: 'true', APP_ACCESS_CODE: 'private' }).accessCode).toBe(
+      'private',
+    );
   });
 });

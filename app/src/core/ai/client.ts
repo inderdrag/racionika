@@ -1,3 +1,4 @@
+import { hasAiConsent } from '../profile';
 import {
   APP_VERSION,
   HealthSchema,
@@ -18,11 +19,13 @@ export const serverLabel = base
   : import.meta.env.DEV
     ? 'локальный сервер'
     : window.location.host;
-let accessCode: string | undefined;
 let registration: Promise<string> | undefined;
-export function setAccessCode(code: string) {
-  accessCode = code;
-  registration = undefined;
+function requireConsent() {
+  if (!hasAiConsent())
+    throw new AiError(
+      'consent_required',
+      'Включите ИИ в Профиле. Согласие сохраняется один раз для фото, описаний и чата.',
+    );
 }
 export class AiError extends Error {
   constructor(
@@ -86,13 +89,15 @@ async function register() {
     await platform.secureStorage.set('racionika.deviceId', deviceId);
   }
   const config = await getConfig();
-  if (config.access_code_required && !accessCode)
-    throw new AiError('access_code', 'Введите код доступа к серверу.');
+  if (config.access_code_required)
+    throw new AiError(
+      'server_updating',
+      'Сервер ещё обновляется или работает в закрытом режиме. Попробуйте позже.',
+    );
   const result = RegisterResponseSchema.parse(
     await raw('/v1/register', {
       deviceId,
       appVersion: APP_VERSION,
-      ...(accessCode ? { accessCode } : {}),
     }),
   );
   await platform.secureStorage.set(`racionika.token.${APP_VERSION}`, result.token);
@@ -133,6 +138,7 @@ export async function analyzeText(
   quality: Quality,
   signal: AbortSignal,
 ) {
+  requireConsent();
   return AnalysisResponseSchema.parse(
     await authorized('/v1/analyze-text', { text, hint, quality }, signal),
   );
@@ -143,11 +149,13 @@ export async function analyzePhotos(
   quality: Quality,
   signal: AbortSignal,
 ) {
+  requireConsent();
   return AnalysisResponseSchema.parse(
     await authorized('/v1/analyze-meal', { images, hint, quality }, signal),
   );
 }
 export async function lookupFood(name: string, signal: AbortSignal) {
+  requireConsent();
   return LookupResponseSchema.parse(await authorized('/v1/lookup-food', { name }, signal));
 }
 export async function askCoach(
@@ -155,9 +163,11 @@ export async function askCoach(
   summary: string,
   history: { role: 'user' | 'assistant'; text: string }[],
   signal: AbortSignal,
+  goal: 'lose' | 'maintain' | 'gain' = 'maintain',
 ) {
+  requireConsent();
   return CoachResponseSchema.parse(
-    await authorized('/v1/coach', { message, summary, history, goal: 'maintain' }, signal),
+    await authorized('/v1/coach', { message, summary, history, goal }, signal),
   );
 }
 export async function getUsage() {
@@ -167,5 +177,4 @@ export async function resetAiSession() {
   const storage = (await getPlatform()).secureStorage;
   await storage.remove(`racionika.token.${APP_VERSION}`);
   await storage.remove('racionika.deviceId');
-  accessCode = undefined;
 }

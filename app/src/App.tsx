@@ -1,3 +1,8 @@
+import { loadProfile, personalPlan } from './core/profile';
+import { loadReminders, reminderPlan, motivations } from './core/notifications/plan';
+import { ProfileForm } from './features/ProfileForm';
+import { ProfileSettings } from './features/ProfileSettings';
+import { Progress } from './features/Progress';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { liveQuery } from 'dexie';
 import { APP_VERSION } from '@racionika/shared';
@@ -5,7 +10,6 @@ import { db, localDay, type FoodEntry } from './core/db';
 import { useNavigation, type Tab } from './core/navigation';
 import { consistentNutrients, scaleNutrients } from './core/nutrition/meal';
 import { getPlatform } from './core/platform';
-import { checkServer, getConfig, getUsage, resetAiSession } from './core/ai/client';
 import { entryTotals } from './core/nutrition/analysis';
 import { AddFoodDialog } from './features/add-food/AddFoodDialog';
 import { Coach } from './features/Coach';
@@ -21,7 +25,9 @@ export function App() {
   const [manual, setManual] = useState(false);
   const [editing, setEditing] = useState<FoodEntry>();
   const [notice, setNotice] = useState('');
-  const [server, setServer] = useState('Не проверен');
+  const [profile, setProfile] = useState(loadProfile);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [customWater, setCustomWater] = useState('');
   const [error, setError] = useState('');
   const addButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -43,6 +49,50 @@ export function App() {
     });
     return () => subscription.unsubscribe();
   }, [day]);
+  useEffect(() => {
+    const update = () => setProfile(loadProfile());
+    window.addEventListener('racionika:profile', update);
+    window.addEventListener('racionika:consent', update);
+    const theme = localStorage.getItem('racionika.theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    return () => {
+      window.removeEventListener('racionika:profile', update);
+      window.removeEventListener('racionika:consent', update);
+    };
+  }, []);
+  const hasProfile = Boolean(profile);
+  useEffect(() => {
+    if (!hasProfile) return;
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+    const reschedule = () => {
+      void getPlatform()
+        .then((p) => p.notifications.replaceDaily(reminderPlan(loadReminders()), false))
+        .catch(() => {
+          if (!disposed)
+            setNotice('Проверьте напоминания в Профиле: Android мог изменить разрешения.');
+        });
+    };
+    void getPlatform()
+      .then(async (p) => {
+        const stop = await p.notifications.listen((route) => {
+          setTab(route);
+          if (route === 'diary') setOpen(true);
+        });
+        if (disposed) stop();
+        else cleanup = stop;
+        if (!disposed) reschedule();
+      })
+      .catch(() => {
+        if (!disposed)
+          setNotice('Не удалось проверить уведомления. Откройте настройки напоминаний.');
+      });
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
+  }, [hasProfile, setTab]);
+  const plan = profile ? personalPlan(profile) : undefined;
   const totals = entries.reduce(
     (sum, entry) => {
       const value = entryTotals(entry);
@@ -149,6 +199,18 @@ export function App() {
       )}
     </section>
   );
+  if (!profile || editingProfile)
+    return (
+      <ProfileForm
+        initial={editingProfile && profile ? profile : undefined}
+        onDone={(value) => {
+          setProfile(value);
+          setEditingProfile(false);
+          window.scrollTo(0, 0);
+        }}
+        onCancel={editingProfile ? () => setEditingProfile(false) : undefined}
+      />
+    );
   return (
     <div className="desktop">
       <aside className="desktop-note">
@@ -169,12 +231,12 @@ export function App() {
           Маленькие шаги каждый день.
         </p>
         <div className="stage">
-          Техническая сборка · {APP_VERSION}
+          Ваш спокойный ритм · {APP_VERSION}
           <br />
           <span>
             КБЖУ по фото и описанию.
             <br />
-            Для реального анализа нужен ключ на сервере.
+            Профиль и дневник — на вашем устройстве.
           </span>
         </div>
       </aside>
@@ -184,11 +246,11 @@ export function App() {
             <Icon name="leaf" size={20} />
             {t('brand')}
           </span>
-          <span className="local-badge">Локально</span>
+          <span className="local-badge">На телефоне</span>
         </header>
         <main>
           <div className="page-title">
-            <p className="eyebrow">ВАШ СПОКОЙНЫЙ РИТМ</p>
+            <p className="eyebrow">{profile.name}, ВАШ СПОКОЙНЫЙ РИТМ</p>
             <h1>
               {tab === 'home'
                 ? 'Хороший день для себя'
@@ -229,13 +291,18 @@ export function App() {
                       <Icon name="leaf" />
                     </span>
                     <h3>
-                      Сначала —<br />
-                      знакомство
+                      {plan?.status === 'ready' ? `${plan.calories} ккал` : 'Индивидуальный план'}
                     </h3>
                     <p>
-                      Личная норма появится
-                      <br />
-                      после настройки плана.
+                      {plan?.status === 'ready' ? (
+                        <>
+                          Ваша цель на день
+                          <br />
+                          {Math.max(0, plan.calories - Math.round(totals.kcal))} ккал осталось
+                        </>
+                      ) : (
+                        'Стандартная диета не назначена. Настройте индивидуальный план со специалистом.'
+                      )}
                     </p>
                   </div>
                 </div>
@@ -245,7 +312,7 @@ export function App() {
                       <span>{['Белки', 'Жиры', 'Углеводы'][index]}</span>
                       <strong>
                         {Math.round(totals[key])}
-                        <small> г</small>
+                        <small> г{plan?.status === 'ready' ? ` / ${plan[key]} г` : ''}</small>
                       </strong>
                       <div className="macro-line" />
                     </div>
@@ -262,7 +329,11 @@ export function App() {
                       {water.toLocaleString('ru-RU')} <small>мл</small>
                     </strong>
                   </div>
-                  <p>Глоток заботы о себе</p>
+                  <p>
+                    {plan?.water
+                      ? `Ориентир: ${plan.water} мл · с учётом жажды`
+                      : 'Глоток заботы о себе'}
+                  </p>
                   <div className="water-actions">
                     {[150, 200, 250, 500].map((ml) => (
                       <button key={ml} onClick={() => void addWater(ml)}>
@@ -270,6 +341,30 @@ export function App() {
                       </button>
                     ))}
                   </div>
+                  <form
+                    className="custom-water"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const value = Number(customWater);
+                      if (Number.isInteger(value) && value > 0 && value <= 5000) {
+                        void addWater(value);
+                        setCustomWater('');
+                      } else setError('Введите объём от 1 до 5000 мл.');
+                    }}
+                  >
+                    <label className="field">
+                      Свой объём, мл
+                      <input
+                        type="number"
+                        min={1}
+                        max={5000}
+                        required
+                        value={customWater}
+                        onChange={(e) => setCustomWater(e.target.value)}
+                      />
+                    </label>
+                    <button className="secondary">Добавить воду</button>
+                  </form>
                   {water > 0 && (
                     <button className="text-button" onClick={() => void undoWater()}>
                       Отменить последнее
@@ -277,145 +372,28 @@ export function App() {
                   )}
                 </section>
               )}
+              {tab === 'home' && (
+                <section className="card daily-support">
+                  <h2>Поддержка дня</h2>
+                  <p>{motivations[new Date(`${day}T12:00:00`).getDay()]}</p>
+                </section>
+              )}
               {mealList}
             </>
           )}
-          {tab === 'coach' && <Coach day={day} totals={totals} entries={entries} water={water} />}
-          {tab === 'progress' && (
-            <section className="card feature-empty">
-              <span className="empty-icon">
-                <Icon name="progress" size={40} />
-              </span>
-              <h2>История начнётся с вас</h2>
-              <p>
-                Графики веса, воды и питания появятся на следующем этапе. Сейчас можно вести дневник
-                и отмечать воду.
-              </p>
-              <button className="primary" onClick={() => setTab('diary')}>
-                Открыть дневник
-              </button>
-            </section>
+          {tab === 'coach' && profile && (
+            <Coach day={day} totals={totals} entries={entries} water={water} profile={profile} />
           )}
-          {tab === 'settings' && (
-            <>
-              <section className="card feature-empty align-left">
-                <h2>Техническая сборка {APP_VERSION}</h2>
-                <p>
-                  Дневник и вода хранятся в локальной базе Dexie. Удаление приложения или очистка
-                  данных браузера удаляет записи.
-                </p>
-                <button
-                  className="secondary"
-                  onClick={() =>
-                    void safely(async () => {
-                      await (
-                        await getPlatform()
-                      ).share.json(`racionika-${localDay()}.json`, {
-                        schemaVersion: 2,
-                        exportedAt: new Date().toISOString(),
-                        foodEntries: await db.foodEntries.toArray(),
-                        waterLogs: await db.waterLogs.toArray(),
-                        chatMessages: await db.chatMessages.toArray(),
-                      });
-                      setNotice('Экспорт подготовлен');
-                    })
-                  }
-                >
-                  Экспортировать JSON
-                </button>
-                <button
-                  className="secondary"
-                  onClick={() =>
-                    void safely(async () => {
-                      setServer('Проверяем…');
-                      const healthy = await checkServer();
-                      const config = healthy ? await getConfig() : undefined;
-                      setServer(
-                        config
-                          ? `Сервер доступен · ${config.mode === 'real' ? 'реальный ИИ' : config.mode === 'demo' ? 'ДЕМО, не распознавание' : 'нужен ключ ИИ'}`
-                          : 'Недоступен или не настроен',
-                      );
-                    })
-                  }
-                >
-                  Проверить сервер
-                </button>
-                <p className="subtle" role="status">
-                  {server}
-                </p>
-                <button
-                  className="secondary"
-                  onClick={() => {
-                    localStorage.removeItem('racionika.aiConsent');
-                    void db.aiCache
-                      .clear()
-                      .then(() => setNotice('Согласие отозвано, кеш оценок очищен'));
-                  }}
-                >
-                  Отозвать согласие на ИИ
-                </button>
-                <label className="consent">
-                  <input
-                    type="checkbox"
-                    defaultChecked={localStorage.getItem('racionika.autoAdditions') !== 'false'}
-                    onChange={(e) =>
-                      localStorage.setItem('racionika.autoAdditions', String(e.target.checked))
-                    }
-                  />
-                  <span>Учитывать автодобавки по умолчанию в новых блюдах</span>
-                </label>
-                <button
-                  className="secondary"
-                  onClick={() =>
-                    void safely(async () => {
-                      const usage = await getUsage();
-                      setServer(
-                        `Сегодня: разборы ${usage.analyses}/${usage.analysis_limit}; ингредиенты ${usage.lookups}/${usage.lookup_limit}; чат ${usage.chat}/${usage.chat_limit}. Сброс: ${new Date(usage.resets_at).toLocaleString('ru-RU')}`,
-                      );
-                    })
-                  }
-                >
-                  Использование ИИ
-                </button>
-                <button
-                  className="danger-button"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        'Удалить все блюда и записи воды на этом устройстве? Сначала сохраните экспорт.',
-                      )
-                    )
-                      void safely(async () => {
-                        await db.transaction(
-                          'rw',
-                          db.foodEntries,
-                          db.waterLogs,
-                          db.aiCache,
-                          db.chatMessages,
-                          async () => {
-                            await db.foodEntries.clear();
-                            await db.waterLogs.clear();
-                            await db.aiCache.clear();
-                            await db.chatMessages.clear();
-                          },
-                        );
-                        localStorage.removeItem('racionika.aiConsent');
-                        await resetAiSession();
-                        setNotice('Локальные записи удалены');
-                      });
-                  }}
-                >
-                  Удалить локальные данные
-                </button>
-              </section>
-              <section className="card">
-                <h2>Что пока не готово</h2>
-                <p>
-                  Онбординг, персональные цели, графики, напоминания, импорт и отчёты. Анализ еды и
-                  чат требуют настроенного сервера; деморежим не распознаёт еду.
-                </p>
-              </section>
-            </>
+          {tab === 'progress' && profile && <Progress profile={profile} />}
+          {tab === 'settings' && profile && (
+            <ProfileSettings
+              profile={profile}
+              onEdit={() => setEditingProfile(true)}
+              onReset={() => {
+                setProfile(null);
+                setTab('home');
+              }}
+            />
           )}
           {notice && (
             <p className="notice" role="status">

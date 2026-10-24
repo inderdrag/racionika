@@ -62,7 +62,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const modelAccurate = env.MODEL_ACCURATE ?? (provider === 'anthropic' ? 'claude-sonnet-5-5' : '');
   if (enabled && !mock && (!modelFast || !modelAccurate))
     throw new Error('Задайте MODEL_FAST и MODEL_ACCURATE');
-  if (production && env.SERVE_WEB === 'true' && !env.APP_ACCESS_CODE)
+  if (
+    production &&
+    env.SERVE_WEB === 'true' &&
+    (!env.APP_ACCESS_CODE || env.REQUIRE_ACCESS_CODE !== 'true')
+  )
     throw new Error('Для публичного сайта задайте APP_ACCESS_CODE');
   const minVersion = env.MIN_APP_VERSION ?? '0.2.0';
   if (!/^\d+\.\d+\.\d+$/.test(minVersion)) throw new Error('MIN_APP_VERSION: формат x.y.z');
@@ -74,7 +78,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     production,
     key,
     jwtSecret,
-    accessCode: env.APP_ACCESS_CODE ?? '',
+    accessCode: env.REQUIRE_ACCESS_CODE === 'true' ? (env.APP_ACCESS_CODE ?? '') : '',
     modelFast,
     modelAccurate,
     maintenance: env.MAINTENANCE_MODE === 'true',

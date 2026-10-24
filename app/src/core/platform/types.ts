@@ -1,3 +1,5 @@
+import type { DailyReminder } from '../notifications/plan';
+import type { Tab } from '../navigation';
 export interface ScheduledReminder {
   id: number;
   title: string;
@@ -25,6 +27,12 @@ export interface Platform {
   };
   share: { json: (name: string, value: unknown) => Promise<void> };
   notifications: {
+    replaceDaily: (
+      items: DailyReminder[],
+      requestPermission: boolean,
+    ) => Promise<{ granted: boolean; exact: boolean }>;
+    listen: (onAction: (route: Tab) => void) => Promise<() => void>;
+    openExactSettings: () => Promise<void>;
     schedule: (reminder: ScheduledReminder) => Promise<boolean>;
     cancel: (ids: number[]) => Promise<void>;
   };

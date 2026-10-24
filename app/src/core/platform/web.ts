@@ -64,6 +64,51 @@ export const webPlatform: Platform = {
   },
   // Только пока открыта вкладка. Это НЕ фоновые напоминания Android.
   notifications: {
+    replaceDaily: async (items, requestPermission) => {
+      if (
+        items.length &&
+        (!('Notification' in window) ||
+          (requestPermission ? await Notification.requestPermission() : Notification.permission) !==
+            'granted')
+      )
+        return { granted: false, exact: false };
+      for (const [id, timer] of timers)
+        if (id >= 10000 && id < 40000) {
+          clearTimeout(timer);
+          timers.delete(id);
+        }
+      for (const item of items) {
+        const schedule = () => {
+          const now = new Date(),
+            next = new Date();
+          next.setHours(item.hour, item.minute, 0, 0);
+          if (next <= now) next.setDate(next.getDate() + 1);
+          if (item.weekday)
+            while (next.getDay() + 1 !== item.weekday) next.setDate(next.getDate() + 1);
+          timers.set(
+            item.id,
+            setTimeout(() => {
+              const n = new Notification(item.title, { body: item.body });
+              n.onclick = () =>
+                window.dispatchEvent(
+                  new CustomEvent('racionika:notification', { detail: item.route }),
+                );
+              schedule();
+            }, next.getTime() - now.getTime()),
+          );
+        };
+        schedule();
+      }
+      return { granted: true, exact: false };
+    },
+    listen: async (onAction) => {
+      const listener = (event: Event) => onAction((event as CustomEvent).detail);
+      window.addEventListener('racionika:notification', listener);
+      return () => window.removeEventListener('racionika:notification', listener);
+    },
+    openExactSettings: async () => {
+      throw new Error('Только Android');
+    },
     schedule: async (reminder) => {
       if (!('Notification' in window)) return false;
       if ((await Notification.requestPermission()) !== 'granted') return false;

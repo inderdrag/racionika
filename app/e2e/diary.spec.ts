@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 test('ручной ввод как запасной путь, вода и перезагрузка', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
@@ -26,7 +26,6 @@ test('описание → состав → локальный пересчёт 
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await expect(page.getByText('ДЕМО: фиксированный пример, без распознавания')).toBeVisible();
   await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-  await page.locator('.consent input').check();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
@@ -60,7 +59,6 @@ test('фото: сжатие JPEG, согласие, пометка демо', a
     .locator('input[type=file]')
     .setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: png });
   await expect(page.getByAltText('Фото блюда 1')).toBeVisible();
-  await page.locator('.consent input').check();
   const request = page.waitForRequest((req) => req.url().includes('/v1/analyze-meal'));
   await page
     .getByRole('dialog')
@@ -76,7 +74,6 @@ test('наставник не выдаёт демо за настоящую ре
   await page.getByRole('button', { name: 'Наставник', exact: true }).click();
   await expect(page.getByText('ДЕМО: фиксированный тестовый ответ, не совет ИИ.')).toBeVisible();
   await page.getByLabel('Сообщение', { exact: true }).fill('Что добавить к обеду?');
-  await page.locator('.consent input').check();
   await page.getByRole('button', { name: 'Отправить', exact: true }).click();
   await expect(page.getByText('Демо-наставник', { exact: true })).toBeVisible();
   await page.reload();
@@ -86,13 +83,15 @@ test('наставник не выдаёт демо за настоящую ре
 test('нет отправки без согласия и нет переполнения на 360×640', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await page.goto('/');
+  await page.evaluate(() => localStorage.removeItem('racionika.aiConsent'));
+  await page.reload();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Два яйца');
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
     .click();
-  await expect(page.getByRole('alert')).toContainText('подтвердите');
+  await expect(page.getByRole('alert')).toContainText('Профиле');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(
     await page
@@ -109,7 +108,6 @@ test('повтор того же описания использует лока�
   for (let i = 0; i < 2; i++) {
     await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
     await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-    await page.locator('.consent input').check();
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'Определить КБЖУ', exact: true })
@@ -127,7 +125,6 @@ test('в результате только состав, граммы и кал�
   await page.goto('/');
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-  await page.locator('.consent input').check();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
@@ -183,7 +180,6 @@ for (const kind of ['text', 'photo'] as const) {
         .locator('input[type=file]')
         .setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: png });
     } else await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-    await page.locator('.consent input').check();
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'Определить КБЖУ', exact: true })
@@ -215,7 +211,6 @@ test('серверная ошибка квоты понятна и ручной 
   await page.goto('/');
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Два яйца');
-  await page.locator('.consent input').check();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
@@ -240,7 +235,6 @@ test('ответ «не еда» не сохраняется в дневник',
   await page.goto('/');
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Стул');
-  await page.locator('.consent input').check();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })

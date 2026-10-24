@@ -74,6 +74,74 @@ export const nativePlatform: Platform = {
     },
   },
   notifications: {
+    replaceDaily: async (items, requestPermission) => {
+      if (items.length) {
+        const permission = requestPermission
+          ? await LocalNotifications.requestPermissions()
+          : await LocalNotifications.checkPermissions();
+        if (permission.display !== 'granted') return { granted: false, exact: false };
+      }
+      const exact =
+        (await LocalNotifications.checkExactNotificationSetting()).exact_alarm === 'granted';
+      for (const [id, name] of [
+        ['meals', 'Питание'],
+        ['water', 'Вода'],
+        ['motivation', 'Поддержка'],
+      ])
+        await LocalNotifications.createChannel({ id, name, importance: 3 });
+      const pending = (
+        await LocalNotifications.getAll({ state: 'SCHEDULED' })
+      ).notifications.filter((item) => item.id >= 10000 && item.id < 40000);
+      if (pending.length)
+        await LocalNotifications.cancel({ notifications: pending.map(({ id }) => ({ id })) });
+      try {
+        if (items.length)
+          await LocalNotifications.schedule({
+            notifications: items.map((item) => ({
+              id: item.id,
+              title: item.title,
+              body: item.body,
+              channelId: item.channel,
+              isExactNotification: exact,
+              schedule: {
+                on: {
+                  hour: item.hour,
+                  minute: item.minute,
+                  ...(item.weekday ? { weekday: item.weekday } : {}),
+                },
+                repeats: true,
+                allowWhileIdle: true,
+              },
+              extra: { route: item.route },
+            })),
+          });
+      } catch {
+        // A failed replacement must not silently remove the previous schedule.
+        try {
+          await LocalNotifications.cancel({ notifications: items.map(({ id }) => ({ id })) });
+          if (pending.length) await LocalNotifications.schedule({ notifications: pending });
+        } catch {
+          throw new Error('Не удалось восстановить напоминания. Сохраните расписание ещё раз.');
+        }
+        throw new Error('Не удалось изменить напоминания. Предыдущее расписание восстановлено.');
+      }
+      return { granted: true, exact };
+    },
+    listen: async (onAction) => {
+      const listener = await LocalNotifications.addListener(
+        'localNotificationActionPerformed',
+        (event) => {
+          const route = event.notification.extra?.route;
+          if (['home', 'diary', 'coach', 'progress', 'settings'].includes(route)) onAction(route);
+        },
+      );
+      return () => {
+        void listener.remove();
+      };
+    },
+    openExactSettings: async () => {
+      await LocalNotifications.changeExactNotificationSetting();
+    },
     schedule: async (reminder) => {
       if ((await LocalNotifications.requestPermissions()).display !== 'granted') return false;
       await LocalNotifications.createChannel({ id: 'meals', name: 'Питание', importance: 3 });
