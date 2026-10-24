@@ -1,0 +1,17 @@
+# Фаза 0: только health. Это НЕ готовый ИИ-прокси.
+services:
+  - type: web
+    name: racionika-api
+    runtime: node
+    region: frankfurt
+    plan: free # Платный план включается только вручную после проверки тарифов.
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci && npm run build -w @racionika/shared && npm run build -w @racionika/server
+    startCommand: npm run start -w @racionika/server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.1
+      - key: NODE_ENV
+        value: production

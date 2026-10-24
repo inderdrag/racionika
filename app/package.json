@@ -1,0 +1,41 @@
+{
+  "name": "@racionika/app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "dev:android": "cap run android",
+    "apk:debug": "npm run build && cap sync android && node ../scripts/android-build.mjs"
+  },
+  "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/camera": "8.2.6",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/network": "8.0.1",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "@fontsource/manrope": "5.3.0",
+    "@racionika/shared": "0.1.0",
+    "dexie": "4.4.7",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zustand": "5.0.16"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "autoprefixer": "10.6.1",
+    "postcss": "8.5.31",
+    "tailwindcss": "3.4.19"
+  }
+}
