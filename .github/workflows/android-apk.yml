@@ -44,3 +44,40 @@ jobs:
           path: app/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+  draft-release:
+    name: Create draft release
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: racionika-debug-apk
+          path: release
+      - name: Attach APK to a new draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s release/app-debug.apk
+          TAG="android-debug-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cat > release-notes.md <<EOF_NOTES
+          Тестовая debug-сборка Android. Это черновик, публикация выполняется вручную.
+
+          Установочный файл: app-debug.apk (скачивать и устанавливать без распаковки).
+          Для ИИ требуется интернет и код доступа к серверу. Ключ AnyModel в APK не включён.
+          Стабильная release-подпись ещё не настроена: совместимость обновления с предыдущими debug-сборками не гарантируется. Перед удалением приложения экспортируйте данные.
+
+          Коммит: ${GITHUB_SHA}
+          Сборка: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF_NOTES
+          gh release create "$TAG" \
+            'release/app-debug.apk#Рационика — установочный APK' \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "Рационика — Android APK #${GITHUB_RUN_NUMBER} (попытка ${GITHUB_RUN_ATTEMPT})" \
+            --notes-file release-notes.md
