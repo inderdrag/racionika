@@ -51,6 +51,31 @@ export function parseProviderResponse(
   provider: ServerConfig['provider'],
   raw: unknown,
 ): { text: string; input: number; output: number } {
+  if (provider === 'anymodel') {
+    const value = z
+      .object({
+        choices: z
+          .array(
+            z.object({
+              finish_reason: z.string(),
+              message: z.object({ content: z.string().min(1) }),
+            }),
+          )
+          .min(1),
+        usage: z.object({
+          prompt_tokens: z.number().finite().nonnegative(),
+          completion_tokens: z.number().finite().nonnegative(),
+        }),
+      })
+      .parse(raw);
+    if (value.choices[0].finish_reason !== 'stop')
+      throw new ApiFailure('bad_ai_output', 502, 'ИИ не завершил ответ. Уточните описание блюда.');
+    return {
+      text: value.choices[0].message.content,
+      input: value.usage.prompt_tokens,
+      output: value.usage.completion_tokens,
+    };
+  }
   if (provider === 'anthropic') {
     const value = z
       .object({
@@ -141,7 +166,28 @@ export function createProvider(config: ServerConfig, transport: typeof fetch = f
     const images = input.images ?? [];
     const maxTokens = input.task === 'meal' ? 4500 : 1800;
     let url: string, headers: Record<string, string>, body: unknown;
-    if (config.provider === 'anthropic') {
+    if (config.provider === 'anymodel') {
+      url = 'https://anymodel.org/v1/chat/completions';
+      headers = { Authorization: `Bearer ${config.key}` };
+      body = {
+        model,
+        stream: false,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: system },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text },
+              ...images.map((image) => ({
+                type: 'image_url',
+                image_url: { url: `data:${image.mimeType};base64,${image.data}` },
+              })),
+            ],
+          },
+        ],
+      };
+    } else if (config.provider === 'anthropic') {
       url = 'https://api.anthropic.com/v1/messages';
       headers = { 'x-api-key': config.key, 'anthropic-version': '2023-06-01' };
       body = {
@@ -238,6 +284,7 @@ export function createProvider(config: ServerConfig, transport: typeof fetch = f
       }
       // Цена зависит от модели, кеширования и тарифа; не выдумываем её, если не настроена.
       const price =
+        config.provider !== 'anymodel' &&
         input.quality === 'fast' &&
         config.inputPrice !== undefined &&
         config.outputPrice !== undefined

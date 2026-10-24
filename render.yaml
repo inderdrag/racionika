@@ -1,13 +1,13 @@
-# ИИ-прокси. Секреты вводятся в Render, никогда в GitHub.
+# Один сервис: сайт + API. Ключ AnyModel вводится только в Render Environment.
 services:
   - type: web
-    name: racionika-api
+    name: racionika
     runtime: node
     region: frankfurt
-    plan: free # Платный план включается только вручную после проверки тарифов.
+    plan: free
     branch: main
     autoDeployTrigger: checksPass
-    buildCommand: npm ci && npm run build -w @racionika/shared && npm run build -w @racionika/server
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start -w @racionika/server
     healthCheckPath: /health
     envVars:
@@ -15,19 +15,23 @@ services:
         value: 24.22.1
       - key: NODE_ENV
         value: production
+      - key: SERVE_WEB
+        value: 'true'
       - key: AI_PROVIDER
-        value: anthropic
-      - key: ANTHROPIC_API_KEY
+        value: anymodel
+      - key: ANYMODEL_API_KEY
         sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: APP_ACCESS_CODE
         sync: false
+      # Точные ID vision/imageToText из каталога AnyModel, с префиксами.
+      # Для первого теста можно задать один и тот же ID в обеих переменных.
       - key: MODEL_FAST
-        value: claude-haiku-5-5
+        sync: false
       - key: MODEL_ACCURATE
-        value: claude-sonnet-5-5
+        sync: false
       - key: MOCK_AI
-        value: false
+        value: 'false'
       - key: GLOBAL_DAILY_REQUEST_CAP
         value: 300

@@ -16,3 +16,6 @@
 - https://ai.google.dev/api/generate-content — systemInstruction,inlineData,responseMimeType,usageMetadata.
 
 Живые платные вызовы не выполнялись. Тарифы не захардкожены;retention, доступность конкретному аккаунту, платёжные ограничения и реальные условия данных нужно проверять у провайдера. Render deploy и release workflow не проверены.
+
+- https://anymodel.org/api-docs.md — AnyModel Chat Completions, Bearer, каталог ID с префиксами, imageToText и единицы баланса. Проверено 2026-10-24, без ключа и платных запросов.
+- https://render.com/docs/blueprint-spec — единый Node Web Service, env generateValue/sync:false и checksPass.

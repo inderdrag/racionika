@@ -26,7 +26,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 notepad server/.env
 ```
 
-В локальном `server/.env`: заполните ANTHROPIC_API_KEY ключом аккаунта Anthropic, JWT_SECRET результатом генератора, APP_ACCESS_CODE личным кодом доступа. MOCK_AI=false. Не присылайте ключ в чат и не коммитьте .env. Затем:
+В локальном `server/.env`: заполните ANYMODEL_API_KEY ключом AnyModel, JWT_SECRET результатом генератора, APP_ACCESS_CODE личным кодом доступа. MOCK_AI=false. Не присылайте ключ в чат и не коммитьте .env. Затем:
 
 ```powershell
 npm.cmd run dev
@@ -34,7 +34,7 @@ npm.cmd run dev
 
 Откройте http://localhost:5173. Проверьте: http://localhost:8787/v1/config показывает mode: real, не demo. В форме задайте описание/фото, согласие и код доступа. У провайдера должен быть доступ к заданным моделям и оплаченный API-баланс.
 
-Модели по умолчанию: claude-haiku-5-5 и claude-sonnet-5-5. Если ваш аккаунт не имеет доступа, укажите доступные vision-модели в MODEL_FAST/MODEL_ACCURATE. Для OpenAI: AI_PROVIDER=openai, OPENAI_API_KEY и обе модели; для Gemini аналогично AI_PROVIDER=gemini, GEMINI_API_KEY. Переименование моделей и доступность проверяются по актуальной документации аккаунта. Никаких публичных VITE_* ключей.
+В текущем .env.example выбран AnyModel: укажите AI_PROVIDER=anymodel и точные ID vision-моделей из его каталога в MODEL_FAST и MODEL_ACCURATE. Можно использовать один ID в обеих строках. Для прямого Anthropic выберите AI_PROVIDER=anthropic и ANTHROPIC_API_KEY; модели по умолчанию: claude-haiku-5-5 и claude-sonnet-5-5. Если ваш аккаунт не имеет доступа, укажите доступные vision-модели в MODEL_FAST/MODEL_ACCURATE. Для OpenAI: AI_PROVIDER=openai, OPENAI_API_KEY и обе модели; для Gemini аналогично AI_PROVIDER=gemini, GEMINI_API_KEY. Переименование моделей и доступность проверяются по актуальной документации аккаунта. Никаких публичных VITE_* ключей.
 
 Без ключа обычный npm run dev показывает «ИИ не настроен», но ручной дневник работает. После изменений .env перезапустите сервер. После смены JWT_SECRET клиент автоматически зарегистрируется заново; код доступа может понадобиться повторно.
 

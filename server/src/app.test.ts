@@ -28,6 +28,16 @@ async function auth(app: Awaited<ReturnType<typeof server>>, extra = {}) {
   return { authorization: `Bearer ${response.json().token}` };
 }
 describe('Сервер ИИ', () => {
+  it('загрузка сайта не расходует минутный лимит API, защита API сохранена', async () => {
+    const app = await server();
+    for (let i = 0; i < 70; i++) {
+      expect((await app.inject('/')).statusCode).not.toBe(429);
+    }
+    for (let i = 0; i < 60; i++) {
+      expect((await app.inject('/v1/config')).statusCode).toBe(200);
+    }
+    expect((await app.inject('/v1/config')).statusCode).toBe(429);
+  });
   it('health и честный деморежим', async () => {
     const app = await server();
     expect((await app.inject('/health')).json()).toEqual({ status: 'ok', version: '0.2.0' });
@@ -273,6 +283,6 @@ describe('Сервер ИИ', () => {
 it('общий IP rate limit возвращает429', async () => {
   const app = await server();
   let status = 200;
-  for (let i = 0; i < 61; i++) status = (await app.inject('/health')).statusCode;
+  for (let i = 0; i < 61; i++) status = (await app.inject('/v1/config')).statusCode;
   expect(status).toBe(429);
 });

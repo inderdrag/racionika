@@ -102,3 +102,67 @@ describe('Адаптеры провайдеров без платных вызо
     ).rejects.toMatchObject({ code: 'bad_ai_output' });
   });
 });
+describe('AnyModel Chat Completions', () => {
+  const config = () =>
+    readConfig({
+      AI_PROVIDER: 'anymodel',
+      ANYMODEL_API_KEY: 'test-anymodel-key',
+      MODEL_FAST: 'am/vision-fast',
+      MODEL_ACCURATE: 'am/vision-accurate',
+      MODEL_INPUT_USD_PER_MILLION: '1',
+      MODEL_OUTPUT_USD_PER_MILLION: '1',
+    });
+  const response = {
+    choices: [{ finish_reason: 'stop', message: { content: '{"text":"ok"}' } }],
+    usage: { prompt_tokens: 23, completion_tokens: 7 },
+  };
+  it('отправляет фото в image_url на фиксированный endpoint и читает usage', async () => {
+    const transport = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(response)));
+    const result = await createProvider(
+      config(),
+      transport,
+    )({
+      task: 'meal',
+      data: { hint: 'рис' },
+      images: [{ mimeType: 'image/jpeg', data: '/9j/AA==' }],
+      quality: 'accurate',
+      repair: false,
+      signal: new AbortController().signal,
+    });
+    expect(result).toMatchObject({
+      json: { text: 'ok' },
+      usage: { input_tokens: 23, output_tokens: 7, estimated_cost_usd: null },
+    });
+    const [url, options] = transport.mock.calls[0];
+    expect(url).toBe('https://anymodel.org/v1/chat/completions');
+    expect(options?.headers).toMatchObject({ Authorization: 'Bearer test-anymodel-key' });
+    const body = JSON.parse(String(options?.body));
+    expect(body.model).toBe('am/vision-accurate');
+    expect(body.messages[1].content[1]).toEqual({
+      type: 'image_url',
+      image_url: { url: 'data:image/jpeg;base64,/9j/AA==' },
+    });
+    expect(body.stream).toBe(false);
+    expect(options?.body).not.toContain('test-anymodel-key');
+    expect(body).not.toHaveProperty('tools');
+  });
+  it('отбрасывает length и tool_calls вместо завершённого JSON', () => {
+    for (const finish_reason of ['length', 'tool_calls', 'content_filter'])
+      expect(() =>
+        parseProviderResponse('anymodel', {
+          ...response,
+          choices: [{ ...response.choices[0], finish_reason }],
+        }),
+      ).toThrow();
+  });
+  it('ключ AnyModel не берётся из OPENAI_API_KEY', () => {
+    const missing = readConfig({ AI_PROVIDER: 'anymodel', OPENAI_API_KEY: 'wrong-key' });
+    expect(missing.enabled).toBe(false);
+    expect(config().key).toBe('test-anymodel-key');
+  });
+  it('не угадывает ID модели', () => {
+    expect(() => readConfig({ AI_PROVIDER: 'anymodel', ANYMODEL_API_KEY: 'key' })).toThrow(
+      'MODEL_FAST',
+    );
+  });
+});

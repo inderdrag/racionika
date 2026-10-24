@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 export interface ServerConfig {
-  provider: 'anthropic' | 'openai' | 'gemini';
+  provider: 'anthropic' | 'openai' | 'gemini' | 'anymodel';
+  serveWeb: boolean;
   mock: boolean;
   enabled: boolean;
   production: boolean;
@@ -37,16 +38,18 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const production = env.NODE_ENV === 'production';
   const mock = env.MOCK_AI === 'true';
   const raw = env.AI_PROVIDER ?? 'anthropic';
-  if (!['anthropic', 'openai', 'gemini'].includes(raw))
-    throw new Error('AI_PROVIDER: допустимы anthropic, openai, gemini');
+  if (!['anthropic', 'openai', 'gemini', 'anymodel'].includes(raw))
+    throw new Error('AI_PROVIDER: допустимы anthropic, openai, gemini, anymodel');
   const provider = raw as ServerConfig['provider'];
   const key =
     env[
-      provider === 'anthropic'
-        ? 'ANTHROPIC_API_KEY'
-        : provider === 'openai'
-          ? 'OPENAI_API_KEY'
-          : 'GEMINI_API_KEY'
+      provider === 'anymodel'
+        ? 'ANYMODEL_API_KEY'
+        : provider === 'anthropic'
+          ? 'ANTHROPIC_API_KEY'
+          : provider === 'openai'
+            ? 'OPENAI_API_KEY'
+            : 'GEMINI_API_KEY'
     ] ?? '';
   const enabled = mock || Boolean(key);
   const jwtSecret = env.JWT_SECRET ?? (production ? '' : randomBytes(48).toString('base64url'));
@@ -59,10 +62,13 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const modelAccurate = env.MODEL_ACCURATE ?? (provider === 'anthropic' ? 'claude-sonnet-5-5' : '');
   if (enabled && !mock && (!modelFast || !modelAccurate))
     throw new Error('Задайте MODEL_FAST и MODEL_ACCURATE');
+  if (production && env.SERVE_WEB === 'true' && !env.APP_ACCESS_CODE)
+    throw new Error('Для публичного сайта задайте APP_ACCESS_CODE');
   const minVersion = env.MIN_APP_VERSION ?? '0.2.0';
   if (!/^\d+\.\d+\.\d+$/.test(minVersion)) throw new Error('MIN_APP_VERSION: формат x.y.z');
   return {
     provider,
+    serveWeb: env.SERVE_WEB === 'true',
     mock,
     enabled,
     production,

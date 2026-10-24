@@ -1,5 +1,12 @@
 # Changelog
 
+## Дополнение AnyModel + Render — 2026-10-24
+
+- Отдельный адаптер AnyModel Chat Completions, фото image_url и usage.
+- Сайт и API одним сервисом Render: SERVE_WEB, same-origin API без ключей в клиенте.
+- Blueprint и подробная инструкция AnyModel/Render; обязательный код доступа для публичного сайта.
+- Браузерная проверка именно собранного сайта, без Vite.
+
 ## 0.2.0 — 2026-10-24
 
 - Автоматический разбор описания и до3фото через серверные Anthropic/OpenAI/Gemini адаптеры.

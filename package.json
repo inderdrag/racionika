@@ -27,7 +27,8 @@
     "doctor": "node scripts/doctor.mjs",
     "postinstall": "node scripts/restore-android.mjs",
     "test:e2e:local": "playwright test --config=playwright.local.config.ts",
-    "dev:demo": "node scripts/start-demo.mjs"
+    "dev:demo": "node scripts/start-demo.mjs",
+    "test:e2e:built": "playwright test --config=playwright.built.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

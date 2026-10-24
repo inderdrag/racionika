@@ -29,3 +29,25 @@ describe('Квоты и версии', () => {
     expect(olderVersion('0.1.9', '0.2.0')).toBe(true);
   });
 });
+describe('Конфигурация публичного сайта', () => {
+  const env = {
+    NODE_ENV: 'production',
+    AI_PROVIDER: 'anymodel',
+    ANYMODEL_API_KEY: 'test-key',
+    JWT_SECRET: 'a'.repeat(48),
+    SERVE_WEB: 'true',
+    MODEL_FAST: 'am/test-vision',
+    MODEL_ACCURATE: 'am/test-vision',
+  };
+  it('требует отдельный код доступа', () => {
+    expect(() => readConfig(env)).toThrow('APP_ACCESS_CODE');
+  });
+  it('принимает закрытую конфигурацию сайта', () => {
+    expect(readConfig({ ...env, APP_ACCESS_CODE: 'private-code' })).toMatchObject({
+      serveWeb: true,
+      provider: 'anymodel',
+      production: true,
+      mock: false,
+    });
+  });
+});

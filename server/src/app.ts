@@ -1,5 +1,7 @@
 import Fastify, { type FastifyRequest } from 'fastify';
 import helmet from '@fastify/helmet';
+import staticFiles from '@fastify/static';
+import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -65,6 +67,7 @@ export async function buildServer(
   await app.register(rateLimit, {
     max: 60,
     timeWindow: '1 minute',
+    allowList: (request) => !request.url.startsWith('/v1/'),
     errorResponseBuilder: () => new ApiFailure('rate_limited', 429, 'Слишком много запросов.', 60),
   });
   const identity = new WeakMap<object, string>();
@@ -271,6 +274,13 @@ export async function buildServer(
       throw new ApiFailure('invalid_input', 400, 'Слишком длинное сообщение или история.');
     return run(request, 'coach', body.data, undefined, 'fast');
   });
+  if (config.serveWeb)
+    await app.register(staticFiles, {
+      root: fileURLToPath(new URL('../../app/dist/', import.meta.url)),
+      wildcard: false,
+      index: ['index.html'],
+      dotfiles: 'deny',
+    });
   app.setNotFoundHandler((_request, reply) =>
     reply.code(404).send({ error: { code: 'invalid_input', message_ru: 'Маршрут не найден.' } }),
   );

@@ -17,3 +17,11 @@
 Демо — фиксированная курица с рисом и фиксированный ответ наставника. Оно НИКОГДА не является реальным распознаванием или персональным советом; все записи помечены DEMO. MOCK_AI=true запрещён в NODE_ENV=production.
 
 Документация форматов: https://platform.claude.com/docs/en/api/messages/create ; https://platform.openai.com/docs/api-reference/responses/create ; https://ai.google.dev/api/generate-content . Каталог моделей Anthropic проверен 2026-10-24: https://platform.claude.com/docs/en/about-claude/models/overview . Тарифы не захардкожены.
+
+## AnyModel
+
+Добавлен AI_PROVIDER=anymodel и ANYMODEL_API_KEY. Фиксированный endpoint https://anymodel.org/v1/chat/completions, Bearer в заголовке, system/user messages, фото в OpenAI-compatible image_url с JPEG data URL, stream:false. Ответ читается из choices[0].message.content; незавершённые/отфильтрованные/tool-call ответы отвергаются. Применяются те же схемы, лимиты и локальная арифметика. Нет tools, поиска или генерации изображений.
+
+MODEL_FAST/MODEL_ACCURATE требуют точных ID из каталога AnyModel. Никакого угадывания модели или автоматического платного fallback на другую модель. Выбранный маршрут должен принимать фотографии. Формат проверен HTTP-фикстурами; живые текстовые/фото-запросы и доступность vision-моделей не проверены без ключа.
+
+AnyModel считает баланс в собственных токенах с коэффициентами маршрута: USD по прежним env-ценам для него не рассчитывается, estimated_cost_usd=null. Источник реального списания — кабинет AnyModel. Поскольку это шлюз, содержимое проходит через AnyModel и его вышестоящего поставщика; retention/регион/условия проверяются отдельно. Ghost Mode включается владельцем ключа в AnyModel и не гарантируется кодом приложения. Документация: https://anymodel.org/api-docs.md .

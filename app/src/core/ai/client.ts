@@ -11,8 +11,13 @@ import {
   type Quality,
 } from '@racionika/shared';
 import { getPlatform } from '../platform';
+import { Capacitor } from '@capacitor/core';
 const base = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? '';
-export const serverLabel = base ? new URL(base).host : 'локальный сервер';
+export const serverLabel = base
+  ? new URL(base).host
+  : import.meta.env.DEV
+    ? 'локальный сервер'
+    : window.location.host;
 let accessCode: string | undefined;
 let registration: Promise<string> | undefined;
 export function setAccessCode(code: string) {
@@ -31,7 +36,7 @@ export class AiError extends Error {
 }
 function endpoint(path: string) {
   if (base) return new URL(path, base).href;
-  if (!import.meta.env.DEV)
+  if (!import.meta.env.DEV && Capacitor.isNativePlatform())
     throw new AiError(
       'unconfigured',
       'Адрес сервера не задан. Владелец должен указать VITE_API_BASE_URL при сборке.',

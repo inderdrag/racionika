@@ -13,3 +13,5 @@ Helmet,CORS allowlist, no-store. API-ключ только env сервера. �
 TRUST_PROXY_HOPS=0 безопасно не доверяет forwarded IP. За Render/другим прокси сначала определите доверенную топологию; иначе все клиенты могут разделять один IP-лимит. Не включайте безусловный trustProxy=true.
 
 Стоимость — только оценка по опциональным env-ценам fast-модели и полученным токенам. Без цен/для accurate возвращается null. Кеширование,vision,reasoning и попытки с неразбираемым ответом могут сделать реальный счёт другим. Финансовый источник истины — кабинет провайдера.
+
+SERVE_WEB=true раздаёт только app/dist (не корень репозитория и не .env). В production этот режим требует APP_ACCESS_CODE. Build должен установить devDependencies для TypeScript/Vite: npm ci --include=dev && npm run build. Для AnyModel используется отдельный ключ ANYMODEL_API_KEY, фиксированный HTTPS endpoint и точные env-модели без платного автоматического fallback.
