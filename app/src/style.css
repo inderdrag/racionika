@@ -630,3 +630,280 @@ dialog > .subtle {
     flex-shrink: 0;
   }
 }
+/* Автоматический анализ: основной сценарий, ручной ввод — запасной. */
+.analysis-dialog {
+  width: min(520px, calc(100% - 24px));
+}
+.analysis-dialog > .subtle {
+  margin-top: 12px;
+}
+.ai-mode {
+  padding: 12px 14px;
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 14px;
+  background: var(--surface-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.demo-mode {
+  color: var(--calories);
+  border-color: currentColor;
+}
+.segmented {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.segmented button {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+}
+.segmented button[aria-pressed='true'],
+.chips button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.field {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 16px 0;
+}
+.field input,
+.field textarea,
+.field select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 12px;
+  font: inherit;
+  min-height: 48px;
+}
+.field textarea {
+  resize: vertical;
+}
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  margin: 20px 0;
+}
+.consent input {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.photo-upload {
+  display: grid;
+  gap: 12px;
+}
+.file-picker {
+  position: relative;
+  text-align: center;
+  overflow: hidden;
+  cursor: pointer;
+}
+.file-picker input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.photo-grid figure {
+  position: relative;
+  margin: 0;
+}
+.photo-grid img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.photo-grid button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: var(--surface);
+  border-radius: 50%;
+  width: 44px;
+}
+.result-summary {
+  padding: 8px 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.result-kcal {
+  font-size: 42px;
+  letter-spacing: -1.5px;
+  color: var(--accent);
+}
+.result-kcal small {
+  font-size: 18px;
+}
+.result-summary > p {
+  margin-top: 8px;
+}
+.ingredient {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ingredient-name {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+.ingredient-name input {
+  margin: 0;
+  font-weight: 600;
+}
+.ingredient-mass {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.ingredient-mass button {
+  width: 44px;
+  flex-shrink: 0;
+  background: var(--surface-soft);
+  border-radius: 12px;
+  color: var(--accent);
+  font-size: 24px;
+}
+.ingredient-mass label {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.ingredient-mass input {
+  margin-top: 4px;
+}
+.ingredient-mass strong {
+  text-align: right;
+  min-width: 68px;
+  font-size: 18px;
+}
+.ingredient-mass small {
+  display: block;
+  font-size: 14px;
+}
+.additions {
+  background: var(--surface-soft);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 20px 0;
+  font-size: 14px;
+}
+.ingredient-search {
+  margin: 20px 0;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+}
+.chips button {
+  background: var(--bg);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.clarification {
+  margin: 16px 0;
+}
+.warning {
+  font-size: 14px;
+  color: var(--calories);
+  padding: 12px 0;
+}
+.analysis-busy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+  text-align: center;
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.save-analysis {
+  margin-top: 12px !important;
+}
+.dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+}
+.usage-note {
+  margin-top: 16px;
+}
+.chat-history {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+.chat-message {
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface-soft);
+  overflow-wrap: anywhere;
+}
+.chat-message.user {
+  border: 1px solid var(--line);
+}
+.chat-message p {
+  white-space: pre-wrap;
+  margin-bottom: 0;
+}
+.coach-card textarea {
+  min-height: 100px;
+}
+.coach-card label {
+  display: block;
+  margin: 16px 0;
+}
+.coach-card .consent {
+  display: flex;
+}
+.analysis-dialog .error {
+  margin-top: 12px;
+}
+.coach-card .field textarea {
+  font-size: 16px;
+}

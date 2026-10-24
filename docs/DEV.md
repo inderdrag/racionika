@@ -1,31 +1,53 @@
-# Запуск на Windows для новичка
+# Запуск на ПК
 
-## 1. Браузерный режим (доступен сейчас)
+## Быстрая проверка без ключа
 
-1. Установите Git for Windows и Node 24 LTS. Откройте новый PowerShell.
-2. Выполните команды из README: git clone, cd racionika, npm ci, npm run dev.
-3. Откройте http://localhost:5173. На широком экране появится рамка телефона. В инструментах браузера можно выбрать ширину 360×640 или Pixel 7.
-4. Остановка: Ctrl+C в терминале. Однокликовый повторный запуск: scripts/start-dev.bat.
-5. Публичный health-check: http://localhost:8787/health. Ключей ИИ не нужно. MOCK_AI пока НЕ реализован; не выдаём закрытые ИИ-функции за mock-провайдер.
+Установите Node 24 LTS и Git for Windows. Откройте PowerShell в папке проекта:
 
-На web фотоадаптер открывает выбор файла; storage-адаптер использует sessionStorage; экспорт скачивает JSON. В UI фото и уведомления пока не включены. Уведомления web-адаптера работают только при открытой вкладке. Не используйте техническую сборку для важных напоминаний.
+```powershell
+git pull --ff-only
+npm.cmd ci
+npm.cmd run dev:demo
+```
 
-## 2. Dev-панель (ещё не реализована)
+Для первого скачивания вместо git pull: `git clone https://github.com/inderdrag/racionika.git`, затем `cd racionika`.
 
-В плане: источники ИИ, моки/ошибки/таймауты, очищенный request inspector, машина времени, расписания и генератор 30 дней. Сейчас этого нет.
+Откройте http://localhost:5173. Демо возвращает одно фиксированное блюдо независимо от текста/фото и явно это сообщает. Можно проверить отправку фото, правки граммов, сохранение, воду, чат. Ключ и деньги не нужны. Ctrl+C останавливает сервер и сайт. На Linux/macOS — те же команды с npm.
 
-## 3. Android Studio / эмулятор (нужно проверить на вашей машине)
+`npm.cmd` предотвращает ошибку ExecutionPolicy PowerShell без изменения политики безопасности. `ERR_CONNECTION_REFUSED` — терминал с сервером должен оставаться открытым. При занятом порте остановите прошлый запуск (Ctrl+C), не запускайте второй поверх него. Порты: сайт 5173, API 8787.
 
-1. Установите Android Studio Otter 2025.2.1 или новее: https://developer.android.com/studio .
-2. В SDK Manager установите Android SDK Platform 36, Build Tools 36 и Platform Tools. Создайте AVD в Device Manager (например Pixel 7, API 36), запустите его.
-3. Для командной сборки нужен JDK 21. Укажите JAVA_HOME и добавьте его bin в PATH. Установите ANDROID_HOME на каталог SDK (обычно `%LOCALAPPDATA%\Android\Sdk`), добавьте `%ANDROID_HOME%\platform-tools` в PATH. Откройте новый терминал.
-4. Выполните `npm run doctor`. Исправьте отсутствующие инструменты.
-5. Выполните `npm run apk:debug`. Файл при успехе: app/android/app/build/outputs/apk/debug/app-debug.apk. Успех этого шага здесь пока не подтверждён.
-6. `npm run dev:android` устанавливает/запускает текущую оболочку через Capacitor. Это НЕ готовый livereload workflow; для чистого production-клиента cleartext запрещён. Не включайте debug URL в release-конфигурацию.
-7. Телефон: включите параметры разработчика → USB-отладка, подключите USB и разрешите отладку. Проверьте `adb devices`.
+## Настоящее распознавание
 
-Для диагностики WebView используйте отдельную debug-конфигурацию; в текущем Capacitor config WebView-debugging отключён, поэтому chrome://inspect не обещан как рабочий путь без явной debug-настройки. Эмулятору для самой работы дневника не нужен интернет.
+Остановите демо. Выполните в корне проекта:
 
-## Тесты
+```powershell
+Copy-Item server/.env.example server/.env
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+notepad server/.env
+```
 
-`npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, затем `npx playwright install chromium` и `npm run test:e2e`. В CI используется штатный браузер Playwright. Системный Chromium можно использовать только в локальном QA через отдельный конфиг.
+В локальном `server/.env`: заполните ANTHROPIC_API_KEY ключом аккаунта Anthropic, JWT_SECRET результатом генератора, APP_ACCESS_CODE личным кодом доступа. MOCK_AI=false. Не присылайте ключ в чат и не коммитьте .env. Затем:
+
+```powershell
+npm.cmd run dev
+```
+
+Откройте http://localhost:5173. Проверьте: http://localhost:8787/v1/config показывает mode: real, не demo. В форме задайте описание/фото, согласие и код доступа. У провайдера должен быть доступ к заданным моделям и оплаченный API-баланс.
+
+Модели по умолчанию: claude-haiku-5-5 и claude-sonnet-5-5. Если ваш аккаунт не имеет доступа, укажите доступные vision-модели в MODEL_FAST/MODEL_ACCURATE. Для OpenAI: AI_PROVIDER=openai, OPENAI_API_KEY и обе модели; для Gemini аналогично AI_PROVIDER=gemini, GEMINI_API_KEY. Переименование моделей и доступность проверяются по актуальной документации аккаунта. Никаких публичных VITE_* ключей.
+
+Без ключа обычный npm run dev показывает «ИИ не настроен», но ручной дневник работает. После изменений .env перезапустите сервер. После смены JWT_SECRET клиент автоматически зарегистрируется заново; код доступа может понадобиться повторно.
+
+## Хранение и экспорт
+
+Dexie в браузере хранит дневник, воду, историю чата и ограниченный кеш оценок. Очистка данных сайта/смена origin удаляет или изолирует эти данные. Делайте JSON-экспорт в профиле. Импорт ещё не реализован. Фото не сохраняются; при повторном открытии блюда доступен текстовый разбор, а не исходное изображение. Веб-сессия/идентификатор хранятся в sessionStorage, на Android — secure storage.
+
+## Android
+
+Для браузера Android Studio не нужна. Для APK нужны Android Studio, SDK Platform 36, Build Tools 36, Platform Tools и JDK 21. Настройте JAVA_HOME, ANDROID_HOME и adb в PATH. `npm run doctor` проверяет окружение, `npm run apk:debug` собирает debug APK в app/android/app/build/outputs/apk/debug/app-debug.apk. Здесь этот шаг не проверен: Android SDK отсутствует.
+
+Для native-сборки задайте публичный HTTPS VITE_API_BASE_URL в app/.env (см. пример), затем npm run build. В APK не используйте localhost и HTTP. Ключ остаётся на сервере. CapacitorHttp после запуска не гарантирует сетевую отмену: клиент игнорирует поздний ответ, серверный таймаут ограничивает длительность; уже начатый запрос может оплачиваться.
+
+## Разработка
+
+`npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`. Браузерные тесты запускают демосервер: `npx playwright install chromium`, затем `npm run test:e2e`. При локальном системном Chromium: `npm run test:e2e:local`, путь можно передать PLAYWRIGHT_CHROMIUM_EXECUTABLE. Не запускайте тесты поверх сервера в реальном режиме: они рассчитаны на mock без платных вызовов.

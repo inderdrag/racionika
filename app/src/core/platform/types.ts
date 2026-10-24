@@ -11,7 +11,18 @@ export interface Platform {
     set: (key: string, value: string) => Promise<void>;
     remove: (key: string) => Promise<void>;
   };
-  http: { get: (url: string) => Promise<unknown> };
+  http: {
+    get: (url: string) => Promise<unknown>;
+    request: (
+      url: string,
+      options: {
+        method: 'GET' | 'POST';
+        body?: unknown;
+        headers?: Record<string, string>;
+        signal?: AbortSignal;
+      },
+    ) => Promise<{ status: number; data: unknown }>;
+  };
   share: { json: (name: string, value: unknown) => Promise<void> };
   notifications: {
     schedule: (reminder: ScheduledReminder) => Promise<boolean>;

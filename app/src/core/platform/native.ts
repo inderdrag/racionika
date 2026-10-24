@@ -37,6 +37,20 @@ export const nativePlatform: Platform = {
     },
   },
   http: {
+    request: async (url, options) => {
+      if (!url.startsWith('https://')) throw new Error('Требуется HTTPS');
+      options.signal?.throwIfAborted();
+      const response = await CapacitorHttp.request({
+        url,
+        method: options.method,
+        headers: { 'content-type': 'application/json', ...options.headers },
+        data: options.body,
+        connectTimeout: 90000,
+        readTimeout: 90000,
+      });
+      options.signal?.throwIfAborted();
+      return { status: response.status, data: response.data };
+    },
     get: async (url) => {
       if (!url.startsWith('https://')) throw new Error('Требуется HTTPS');
       const response = await CapacitorHttp.get({ url, connectTimeout: 90000, readTimeout: 90000 });

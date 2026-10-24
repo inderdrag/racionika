@@ -1,4 +1,4 @@
-# Фаза 0: только health. Это НЕ готовый ИИ-прокси.
+# ИИ-прокси. Секреты вводятся в Render, никогда в GitHub.
 services:
   - type: web
     name: racionika-api
@@ -15,3 +15,19 @@ services:
         value: 24.22.1
       - key: NODE_ENV
         value: production
+      - key: AI_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_ACCESS_CODE
+        sync: false
+      - key: MODEL_FAST
+        value: claude-haiku-5-5
+      - key: MODEL_ACCURATE
+        value: claude-sonnet-5-5
+      - key: MOCK_AI
+        value: false
+      - key: GLOBAL_DAILY_REQUEST_CAP
+        value: 300

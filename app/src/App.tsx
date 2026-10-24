@@ -5,7 +5,10 @@ import { db, localDay, type FoodEntry } from './core/db';
 import { useNavigation, type Tab } from './core/navigation';
 import { consistentNutrients, scaleNutrients } from './core/nutrition/meal';
 import { getPlatform } from './core/platform';
-import { checkServer } from './core/ai/client';
+import { checkServer, getConfig, getUsage, resetAiSession } from './core/ai/client';
+import { entryTotals } from './core/nutrition/analysis';
+import { AddFoodDialog } from './features/add-food/AddFoodDialog';
+import { Coach } from './features/Coach';
 import { t } from './core/i18n';
 import { Icon } from './shared/ui/Icon';
 const tabs: Tab[] = ['home', 'diary', 'coach', 'progress', 'settings'];
@@ -15,6 +18,7 @@ export function App() {
   const [entries, setEntries] = useState<FoodEntry[]>([]);
   const [water, setWater] = useState(0);
   const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState(false);
   const [editing, setEditing] = useState<FoodEntry>();
   const [notice, setNotice] = useState('');
   const [server, setServer] = useState('Не проверен');
@@ -41,7 +45,7 @@ export function App() {
   }, [day]);
   const totals = entries.reduce(
     (sum, entry) => {
-      const value = scaleNutrients(entry.per100, entry.grams);
+      const value = entryTotals(entry);
       return {
         kcal: sum.kcal + value.kcal,
         protein: sum.protein + value.protein,
@@ -60,6 +64,7 @@ export function App() {
   }
   function closeDialog() {
     setOpen(false);
+    setManual(false);
     setEditing(undefined);
     addButton.current?.focus();
   }
@@ -93,12 +98,12 @@ export function App() {
           </div>
           <h3>Начнём с одного блюда</h3>
           <p>
-            Внесите продукт и массу.
+            Сфотографируйте или опишите еду.
             <br />
-            Калории пересчитаются на устройстве.
+            Ингредиенты и КБЖУ определит ИИ.
           </p>
           <button className="text-button" onClick={() => setOpen(true)}>
-            Добавить вручную <Icon name="arrow" size={18} />
+            Определить КБЖУ <Icon name="arrow" size={18} />
           </button>
         </div>
       ) : (
@@ -117,10 +122,17 @@ export function App() {
                 </span>
                 <span>
                   <strong>{entry.name}</strong>
-                  <small>{entry.grams} г · ручной ввод</small>
+                  <small>
+                    {Math.round(entry.grams)} г ·{' '}
+                    {entry.source === 'demo'
+                      ? 'ДЕМО'
+                      : entry.analysis
+                        ? 'оценка ИИ'
+                        : 'ручной ввод'}
+                  </small>
                 </span>
                 <b>
-                  {Math.round(scaleNutrients(entry.per100, entry.grams).kcal)}
+                  {Math.round(entryTotals(entry).kcal)}
                   <small>ккал</small>
                 </b>
               </button>
@@ -160,9 +172,9 @@ export function App() {
           Техническая сборка · {APP_VERSION}
           <br />
           <span>
-            Ручной ввод и вода доступны.
+            КБЖУ по фото и описанию.
             <br />
-            ИИ и персональный план — в разработке.
+            Для реального анализа нужен ключ на сервере.
           </span>
         </div>
       </aside>
@@ -268,21 +280,7 @@ export function App() {
               {mealList}
             </>
           )}
-          {tab === 'coach' && (
-            <section className="card feature-empty">
-              <span className="empty-icon">
-                <Icon name="coach" size={40} />
-              </span>
-              <h2>Наставник ещё учится</h2>
-              <p>
-                ИИ не подключён в этой технической сборке. Фото и сообщения никуда не отправляются.
-              </p>
-              <p className="subtle">
-                Следующий этап: защищённый сервер, лимиты и проверка ответов. Это не чат с имитацией
-                ИИ.
-              </p>
-            </section>
-          )}
+          {tab === 'coach' && <Coach day={day} totals={totals} entries={entries} water={water} />}
           {tab === 'progress' && (
             <section className="card feature-empty">
               <span className="empty-icon">
@@ -313,10 +311,11 @@ export function App() {
                       await (
                         await getPlatform()
                       ).share.json(`racionika-${localDay()}.json`, {
-                        schemaVersion: 1,
+                        schemaVersion: 2,
                         exportedAt: new Date().toISOString(),
                         foodEntries: await db.foodEntries.toArray(),
                         waterLogs: await db.waterLogs.toArray(),
+                        chatMessages: await db.chatMessages.toArray(),
                       });
                       setNotice('Экспорт подготовлен');
                     })
@@ -329,9 +328,11 @@ export function App() {
                   onClick={() =>
                     void safely(async () => {
                       setServer('Проверяем…');
+                      const healthy = await checkServer();
+                      const config = healthy ? await getConfig() : undefined;
                       setServer(
-                        (await checkServer())
-                          ? 'Health доступен · ИИ не подключён'
+                        config
+                          ? `Сервер доступен · ${config.mode === 'real' ? 'реальный ИИ' : config.mode === 'demo' ? 'ДЕМО, не распознавание' : 'нужен ключ ИИ'}`
                           : 'Недоступен или не настроен',
                       );
                     })
@@ -343,6 +344,40 @@ export function App() {
                   {server}
                 </p>
                 <button
+                  className="secondary"
+                  onClick={() => {
+                    localStorage.removeItem('racionika.aiConsent');
+                    void db.aiCache
+                      .clear()
+                      .then(() => setNotice('Согласие отозвано, кеш оценок очищен'));
+                  }}
+                >
+                  Отозвать согласие на ИИ
+                </button>
+                <label className="consent">
+                  <input
+                    type="checkbox"
+                    defaultChecked={localStorage.getItem('racionika.autoAdditions') !== 'false'}
+                    onChange={(e) =>
+                      localStorage.setItem('racionika.autoAdditions', String(e.target.checked))
+                    }
+                  />
+                  <span>Учитывать автодобавки по умолчанию в новых блюдах</span>
+                </label>
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    void safely(async () => {
+                      const usage = await getUsage();
+                      setServer(
+                        `Сегодня: разборы ${usage.analyses}/${usage.analysis_limit}; ингредиенты ${usage.lookups}/${usage.lookup_limit}; чат ${usage.chat}/${usage.chat_limit}. Сброс: ${new Date(usage.resets_at).toLocaleString('ru-RU')}`,
+                      );
+                    })
+                  }
+                >
+                  Использование ИИ
+                </button>
+                <button
                   className="danger-button"
                   onClick={() => {
                     if (
@@ -351,10 +386,21 @@ export function App() {
                       )
                     )
                       void safely(async () => {
-                        await db.transaction('rw', db.foodEntries, db.waterLogs, async () => {
-                          await db.foodEntries.clear();
-                          await db.waterLogs.clear();
-                        });
+                        await db.transaction(
+                          'rw',
+                          db.foodEntries,
+                          db.waterLogs,
+                          db.aiCache,
+                          db.chatMessages,
+                          async () => {
+                            await db.foodEntries.clear();
+                            await db.waterLogs.clear();
+                            await db.aiCache.clear();
+                            await db.chatMessages.clear();
+                          },
+                        );
+                        localStorage.removeItem('racionika.aiConsent');
+                        await resetAiSession();
                         setNotice('Локальные записи удалены');
                       });
                   }}
@@ -365,8 +411,8 @@ export function App() {
               <section className="card">
                 <h2>Что пока не готово</h2>
                 <p>
-                  Онбординг, профиль, цели, распознавание фото, ИИ-чат, напоминания, импорт и
-                  отчёты.
+                  Онбординг, персональные цели, графики, напоминания, импорт и отчёты. Анализ еды и
+                  чат требуют настроенного сервера; деморежим не распознаёт еду.
                 </p>
               </section>
             </>
@@ -384,7 +430,7 @@ export function App() {
           <p className="disclaimer">
             Оценки питания не заменяют консультацию врача.
             <br />
-            Техническая сборка · ИИ пока недоступен
+            КБЖУ по фото — оценка. Для точности проверьте массу и рецепт.
           </p>
         </main>
         <button
@@ -412,7 +458,7 @@ export function App() {
           ))}
         </nav>
       </div>
-      {open && (
+      {open && (manual || (editing && !editing.analysis)) && (
         <FoodDialog
           day={day}
           editing={editing}
@@ -421,6 +467,18 @@ export function App() {
             setNotice(
               corrected ? 'Калории уточнены по БЖУ и сохранены' : 'Запись сохранена на устройстве',
             );
+            closeDialog();
+          }}
+        />
+      )}
+      {open && !manual && (!editing || editing.analysis) && (
+        <AddFoodDialog
+          day={day}
+          editing={editing}
+          onClose={closeDialog}
+          onManual={() => setManual(true)}
+          onSaved={() => {
+            setNotice('Блюдо сохранено. КБЖУ рассчитаны на устройстве.');
             closeDialog();
           }}
         />

@@ -5,8 +5,8 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:5173', trace: 'retain-on-failure' },
   projects: [{ name: 'mobile', use: { ...devices['Pixel 7'], browserName: 'chromium' } }],
   webServer: {
-    command: 'npm run dev:client -- --host 127.0.0.1',
-    url: 'http://127.0.0.1:5173',
+    command: 'npm run dev:demo',
+    url: 'http://127.0.0.1:8787/v1/config',
     reuseExistingServer: !process.env.CI,
   },
 });

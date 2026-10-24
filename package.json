@@ -1,6 +1,6 @@
 {
   "name": "racionika",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -26,7 +26,8 @@
     "apk:debug": "npm run apk:debug -w @racionika/app",
     "doctor": "node scripts/doctor.mjs",
     "postinstall": "node scripts/restore-android.mjs",
-    "test:e2e:local": "playwright test --config=playwright.local.config.ts"
+    "test:e2e:local": "playwright test --config=playwright.local.config.ts",
+    "dev:demo": "node scripts/start-demo.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

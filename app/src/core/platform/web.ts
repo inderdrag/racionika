@@ -32,6 +32,18 @@ export const webPlatform: Platform = {
     },
   },
   http: {
+    request: async (url, options) => {
+      const response = await fetch(url, {
+        method: options.method,
+        headers: { 'content-type': 'application/json', ...options.headers },
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: AbortSignal.any([
+          AbortSignal.timeout(90000),
+          ...(options.signal ? [options.signal] : []),
+        ]),
+      });
+      return { status: response.status, data: await response.json() };
+    },
     get: async (url) => {
       const response = await fetch(url, { signal: AbortSignal.timeout(90000) });
       if (!response.ok) throw new Error('Сервер недоступен');
