@@ -17,7 +17,7 @@
     "dev:server": "npm run build -w @racionika/shared && npm run dev -w @racionika/server",
     "build": "npm run build -w @racionika/shared && npm run build -w @racionika/app && npm run build -w @racionika/server",
     "typecheck": "npm run typecheck --workspaces",
-    "test": "vitest run",
+    "test": "vitest run && node --test scripts/android-config.test.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
@@ -28,7 +28,8 @@
     "postinstall": "node scripts/restore-android.mjs",
     "test:e2e:local": "playwright test --config=playwright.local.config.ts",
     "dev:demo": "node scripts/start-demo.mjs",
-    "test:e2e:built": "playwright test --config=playwright.built.config.ts"
+    "test:e2e:built": "playwright test --config=playwright.built.config.ts",
+    "build:server": "npm run build -w @racionika/shared && npm run build -w @racionika/server"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

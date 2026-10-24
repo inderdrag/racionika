@@ -1,4 +1,4 @@
-# Один сервис: сайт + API. Ключ AnyModel вводится только в Render Environment.
+# Только сервер ИИ для Android APK; сайт не публикуется. Ключ AnyModel вводится только в Render Environment.
 services:
   - type: web
     name: racionika
@@ -7,7 +7,7 @@ services:
     plan: free
     branch: main
     autoDeployTrigger: checksPass
-    buildCommand: npm ci --include=dev && npm run build
+    buildCommand: npm ci --include=dev && npm run build:server
     startCommand: npm run start -w @racionika/server
     healthCheckPath: /health
     envVars:
@@ -16,7 +16,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: SERVE_WEB
-        value: 'true'
+        value: 'false'
       - key: AI_PROVIDER
         value: anymodel
       - key: ANYMODEL_API_KEY

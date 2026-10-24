@@ -1,6 +1,8 @@
-# Запуск на ПК
+# Разработка и сборка Android
 
-## Быстрая проверка без ключа
+Пользовательский вариант — APK; локальный браузер ниже нужен только разработчику для проверки интерфейса. Для Render API и сборки APK через GitHub см. RENDER.md.
+
+## Проверка интерфейса разработчиком без ключа
 
 Установите Node 24 LTS и Git for Windows. Откройте PowerShell в папке проекта:
 
@@ -45,6 +47,8 @@ Dexie в браузере хранит дневник, воду, историю 
 ## Android
 
 Для браузера Android Studio не нужна. Для APK нужны Android Studio, SDK Platform 36, Build Tools 36, Platform Tools и JDK 21. Настройте JAVA_HOME, ANDROID_HOME и adb в PATH. `npm run doctor` проверяет окружение, `npm run apk:debug` собирает debug APK в app/android/app/build/outputs/apk/debug/app-debug.apk. Здесь этот шаг не проверен: Android SDK отсутствует.
+
+Ручная сборка APK проверяет, что адрес API задан, использует HTTPS и не указывает localhost. Проверка не подтверждает доступность сервера.
 
 Для native-сборки задайте публичный HTTPS VITE_API_BASE_URL в app/.env (см. пример), затем npm run build. В APK не используйте localhost и HTTP. Ключ остаётся на сервере. CapacitorHttp после запуска не гарантирует сетевую отмену: клиент игнорирует поздний ответ, серверный таймаут ограничивает длительность; уже начатый запрос может оплачиваться.
 
