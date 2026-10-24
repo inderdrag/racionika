@@ -18,3 +18,12 @@ app/android/app/src/main/assets/public/
 .DS_Store
 
 app/android/gradle/wrapper/gradle-wrapper.jar
+
+# Android signing material must never enter Git
+*.p12
+*.pfx
+*.jks.base64
+*.keystore.base64
+keystore.properties
+key.properties
+.racionika-signing/

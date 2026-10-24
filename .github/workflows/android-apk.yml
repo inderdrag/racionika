@@ -18,6 +18,22 @@ jobs:
     env:
       VITE_API_BASE_URL: ${{ inputs.api_base_url }}
     steps:
+      - name: Check permanent signing is configured
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for NAME in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_SIGNING_CERT_SHA256; do
+            if [ -z "${!NAME}" ]; then
+              echo "::error::Missing $NAME. Complete the one-time setup in docs/RELEASE.md. No debug-signing fallback is allowed."
+              exit 1
+            fi
+          done
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -37,11 +53,43 @@ jobs:
       - run: node scripts/android-config.mjs
       - run: npm run build -w @racionika/shared
       - run: npm run lint && npm run typecheck && npm test
-      - run: npm run apk:debug
+      - name: Restore and verify permanent signing key
+        run: node scripts/android-signing.mjs
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+          ANDROID_VERSION_CODE_BASE: ${{ vars.ANDROID_VERSION_CODE_BASE }}
+      - name: Build signed release APK
+        run: npm run apk:release
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Verify APK signature and release mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          CERT_SHA=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          test "${CERT_SHA,,}" = "$ANDROID_EXPECTED_CERT_SHA256"
+          BADGING=$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK")
+          if grep -q '^application-debuggable' <<< "$BADGING"; then
+            echo '::error::Release APK must not be debuggable.'
+            exit 1
+          fi
+          grep -F "versionCode='$ANDROID_VERSION_CODE'" <<< "$BADGING"
+      - name: Remove temporary signing key
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/racionika-release.p12" "$RUNNER_TEMP/racionika-release-cert.der"
       - uses: actions/upload-artifact@v4
         with:
-          name: racionika-debug-apk
-          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          name: racionika-release-apk
+          path: app/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
   draft-release:
@@ -54,7 +102,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: racionika-debug-apk
+          name: racionika-release-apk
           path: release
       - name: Attach APK to a new draft release
         env:
@@ -63,20 +111,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s release/app-debug.apk
-          TAG="android-debug-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test -s release/app-release.apk
+          TAG="android-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           cat > release-notes.md <<EOF_NOTES
-          Тестовая debug-сборка Android. Это черновик, публикация выполняется вручную.
+          Android APK с постоянной release-подписью. Это черновик, публикация выполняется вручную.
 
-          Установочный файл: app-debug.apk (скачивать и устанавливать без распаковки).
-          Для ИИ требуется интернет и код доступа к серверу. Ключ AnyModel в APK не включён.
-          Стабильная release-подпись ещё не настроена: совместимость обновления с предыдущими debug-сборками не гарантируется. Перед удалением приложения экспортируйте данные.
+          Установочный файл: app-release.apk (скачивать и устанавливать без распаковки).
+          Для ИИ требуется интернет. Ключ AnyModel в APK не включён; код доступа не вводится.
+          Последующие APK с этим же ключом, package ID и возрастающим versionCode можно устанавливать поверх приложения. Старые debug-сборки могли иметь другой ключ: перед первым переходом сохраните JSON-копию, не удаляйте приложение без копии.
 
           Коммит: ${GITHUB_SHA}
           Сборка: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           EOF_NOTES
           gh release create "$TAG" \
-            'release/app-debug.apk#Рационика — установочный APK' \
+            'release/app-release.apk#Рационика — установочный APK' \
             --draft \
             --target "$GITHUB_SHA" \
             --title "Рационика — Android APK #${GITHUB_RUN_NUMBER} (попытка ${GITHUB_RUN_ATTEMPT})" \

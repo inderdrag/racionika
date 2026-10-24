@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "dev:android": "cap run android",
-    "apk:debug": "node ../scripts/android-config.mjs && npm run build && cap sync android && node ../scripts/android-build.mjs"
+    "apk:debug": "node ../scripts/android-config.mjs && npm run build && cap sync android && node ../scripts/android-build.mjs",
+    "apk:release": "node ../scripts/android-config.mjs && npm run build && cap sync android && node ../scripts/android-build.mjs --release"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.1",
