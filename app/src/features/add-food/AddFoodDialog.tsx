@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   AnalysisResponseSchema,
-  type AnalysisResponse,
   type MealAnalysis,
   type PublicConfig,
   type Quality,
@@ -12,12 +11,16 @@ import {
   analyzeText,
   getConfig,
   AiError,
-  lookupFood,
   setAccessCode,
   serverLabel,
 } from '../../core/ai/client';
 import { compressPhoto, hashAnalysis } from '../../core/ai/images';
-import { analysisTotals, normalizeAnalysis, aggregatePer100 } from '../../core/nutrition/analysis';
+import {
+  analysisTotals,
+  normalizeAnalysis,
+  aggregatePer100,
+  roundedComponentCalories,
+} from '../../core/nutrition/analysis';
 import { getPlatform } from '../../core/platform';
 interface Props {
   day: string;
@@ -43,34 +46,32 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
   const [result, setResult] = useState<MealAnalysis | undefined>(editing?.analysis);
   const [demo, setDemo] = useState(editing?.source === 'demo');
   const [baseGrams, setBaseGrams] = useState(editing?.baseGrams ?? editing?.grams ?? 0);
-  const [level, setLevel] = useState(
+  const [level] = useState(
     editing?.additionsLevel ??
       (localStorage.getItem('racionika.autoAdditions') === 'false' ? 0 : 1),
   );
-  const [fromCache, setFromCache] = useState(false);
-  const [lookupName, setLookupName] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [daily, setDaily] = useState<AnalysisResponse['daily']>();
   useEffect(() => {
     dialog.current?.showModal();
     let alive = true;
     const warmup = new AbortController();
-    void getConfig(warmup.signal)
-      .then((value) => {
-        if (alive) setConfig(value);
-      })
-      .catch(() => {
-        if (alive)
-          setError(
-            'Нет связи с сервером ИИ. Проверьте npm run dev и настройки сервера. Ручной ввод доступен.',
-          );
-      });
+    if (!editing?.analysis) {
+      void getConfig(warmup.signal)
+        .then((value) => {
+          if (alive) setConfig(value);
+        })
+        .catch(() => {
+          if (alive)
+            setError(
+              'Нет связи с сервером ИИ. Сервер может просыпаться. Попробуйте позже; ручной ввод доступен.',
+            );
+        });
+    }
     return () => {
       alive = false;
       warmup.abort();
       controller.current?.abort();
     };
-  }, []);
+  }, [editing?.analysis]);
   useEffect(() => {
     if (!busy) return;
     const timer = setTimeout(() => setSlow(true), 7000);
@@ -122,7 +123,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
       fail(error);
     }
   }
-  async function analyze(refine = false) {
+  async function analyze() {
     setError('');
     if (!consent) {
       setError('Сначала подтвердите отправку данных на сервер и провайдеру ИИ.');
@@ -134,7 +135,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
       );
       return;
     }
-    if (mode === 'text' && text.trim().length < 2 && !refine) {
+    if (mode === 'text' && text.trim().length < 2) {
       setError('Опишите блюдо или продукты.');
       return;
     }
@@ -148,12 +149,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
     setBusy(true);
     try {
       setAccessCode(access);
-      const contextHint = [
-        hint,
-        ...Object.entries(answers).map(([question, answer]) => `${question}: ${answer}`),
-      ]
-        .join('\n')
-        .slice(0, 500);
+      const contextHint = hint.slice(0, 500);
       const images =
         mode === 'photo'
           ? await Promise.all(
@@ -164,8 +160,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
             )
           : [];
       current.signal.throwIfAborted();
-      const requestText =
-        refine && !text ? `Блюдо: ${result?.dish_name ?? ''}. Уточнение: ${contextHint}` : text;
+      const requestText = text;
       const hash = await hashAnalysis({
         version: 2,
         provider: config?.provider,
@@ -177,7 +172,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
         quality,
       });
       const cached = await db.aiCache.get(hash);
-      let response: AnalysisResponse;
+      let response: ReturnType<typeof AnalysisResponseSchema.parse>;
       let wasCached = false;
       if (cached && Date.now() - cached.createdAt < 86400000) {
         const checked = AnalysisResponseSchema.safeParse(cached.response);
@@ -199,8 +194,6 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
       setResult(normalized);
       setBaseGrams(normalized.ingredients.reduce((sum, item) => sum + item.grams, 0));
       setDemo(response.demo);
-      setDaily(response.daily);
-      setFromCache(wasCached);
       // В кеше только оценка, не изображения; максимум 50 ответов, срок 24 часа.
       if (!wasCached)
         await db.aiCache.put({
@@ -219,45 +212,6 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
     } catch (error) {
       if (!(error instanceof AiError && error.code === 'cancelled') && !current.signal.aborted)
         fail(error);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function addIngredient() {
-    if (!lookupName.trim() || !result) return;
-    if (!consent) {
-      setError('Для поиска через ИИ подтвердите отправку данных.');
-      return;
-    }
-    setSlow(false);
-    setBusy(true);
-    setError('');
-    const current = new AbortController();
-    controller.current = current;
-    try {
-      setAccessCode(access);
-      const response = await lookupFood(lookupName, current.signal);
-      current.signal.throwIfAborted();
-      const food = response.food;
-      const item = {
-        name: food.name,
-        grams: food.typical_grams,
-        grams_range: [food.typical_grams, food.typical_grams] as [number, number],
-        per_100g: food.per_100g,
-        confidence: 0.5,
-      };
-      setResult(
-        normalizeAnalysis({
-          ...result,
-          ingredients: [...result.ingredients, item],
-          warnings: [...result.warnings, food.warning].slice(-10),
-        }),
-      );
-      setDemo(demo || response.demo);
-      setDaily(response.daily);
-      setLookupName('');
-    } catch (error) {
-      if (!current.signal.aborted) fail(error);
     } finally {
       setBusy(false);
     }
@@ -286,6 +240,9 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
     }
   }
   const totals = result ? analysisTotals(result, level, baseGrams) : undefined;
+  const componentCalories = totals ? roundedComponentCalories(totals.components) : [];
+  const displayGrams = (value: number) =>
+    new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(value);
   return (
     <dialog
       ref={dialog}
@@ -302,21 +259,25 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
           ×
         </button>
       </div>
-      <p className="subtle">
-        Фото или описание → ингредиенты → КБЖУ. Значения вручную вводить не нужно.
-      </p>
-      <div
-        className={`ai-mode ${config?.mode === 'demo' || demo ? 'demo-mode' : ''}`}
-        role="status"
-      >
-        {config?.mode === 'demo'
-          ? 'ДЕМО: фиксированный пример, без распознавания'
-          : config?.mode === 'real'
-            ? 'ИИ подключён · оценка, не точное измерение'
-            : config?.mode === 'disabled'
-              ? 'ИИ не настроен на сервере'
-              : 'Проверяем сервер…'}
-      </div>
+      {!result && (
+        <p className="subtle">
+          Фото или описание → ингредиенты → КБЖУ. Значения вручную вводить не нужно.
+        </p>
+      )}
+      {(!result || demo) && (
+        <div
+          className={`ai-mode ${config?.mode === 'demo' || demo ? 'demo-mode' : ''}`}
+          role="status"
+        >
+          {config?.mode === 'demo' || demo
+            ? 'ДЕМО: фиксированный пример, без распознавания'
+            : config?.mode === 'real'
+              ? 'ИИ подключён · оценка, не точное измерение'
+              : config?.mode === 'disabled'
+                ? 'ИИ не настроен на сервере'
+                : 'Проверяем сервер…'}
+        </div>
+      )}
       {!result && (
         <>
           <div className="segmented">
@@ -386,209 +347,128 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
       )}
       {result && (
         <>
-          <div className="result-summary">
-            <label className="field">
-              Блюдо
-              <input
-                value={result.dish_name}
-                maxLength={160}
-                onChange={(e) => setResult({ ...result, dish_name: e.target.value })}
-              />
-            </label>
-            <strong className="result-kcal">
-              {Math.round(totals?.nutrients.kcal ?? 0)} <small>ккал</small>
-            </strong>
-            <p>
-              Б {Math.round(totals?.nutrients.protein ?? 0)} г · Ж{' '}
-              {Math.round(totals?.nutrients.fat ?? 0)} г · У{' '}
-              {Math.round(totals?.nutrients.carbs ?? 0)} г
-            </p>
-            <p className="subtle">
-              {demo
-                ? 'ДЕМО: эта запись не описывает вашу реальную еду.'
-                : fromCache
-                  ? 'Предыдущая оценка из локального кеша.'
-                  : 'Оценка ИИ. Проверьте состав и размер порции.'}
-            </p>
-          </div>
+          {demo && <p className="subtle">ДЕМО: эта запись не описывает вашу реальную еду.</p>}
           {!result.is_food ? (
-            <p className="error">
-              На изображении не распознана еда. Попробуйте другое фото или текстовое описание.
-            </p>
+            <>
+              <p className="error">
+                На изображении не распознана еда. Попробуйте другое фото или текстовое описание.
+              </p>
+              <button className="secondary" onClick={() => setResult(undefined)}>
+                Попробовать снова
+              </button>
+            </>
           ) : (
             <>
-              <div className="ingredient-list">
-                {result.ingredients.map((item, index) => (
+              <div className="meal-name">{result.dish_name}</div>
+              <div className="ingredient-list" aria-label="Состав блюда">
+                {totals?.components.map((item, index) => (
                   <section className="ingredient" key={index}>
-                    <div className="section-head">
-                      <label className="ingredient-name">
-                        <span className="sr-only">Название ингредиента {index + 1}</span>
-                        <input
-                          value={item.name}
-                          maxLength={160}
-                          readOnly
-                          title="Для замены продукта удалите его и найдите новый ингредиент"
-                        />
-                      </label>
-                      <button
-                        className="delete"
-                        aria-label={`Удалить ингредиент ${index + 1}`}
-                        onClick={() =>
-                          setResult({
-                            ...result,
-                            ingredients: result.ingredients.filter((_, i) => i !== index),
-                          })
-                        }
-                      >
-                        ×
-                      </button>
-                    </div>
+                    <h3 className="ingredient-title">{item.name}</h3>
                     <div className="ingredient-mass">
-                      <button
-                        aria-label={`Уменьшить массу ${index + 1}`}
-                        onClick={() => changeGrams(index, item.grams - 10)}
-                      >
-                        −
-                      </button>
-                      <label>
-                        Масса, г
-                        <input
-                          aria-label={`Масса ингредиента ${index + 1}`}
-                          type="number"
-                          min={0}
-                          max={5000}
-                          step="0.1"
-                          value={item.grams}
-                          onChange={(e) => changeGrams(index, Number(e.target.value))}
-                        />
-                      </label>
-                      <button
-                        aria-label={`Увеличить массу ${index + 1}`}
-                        onClick={() => changeGrams(index, item.grams + 10)}
-                      >
-                        +
-                      </button>
-                      <strong>
-                        {Math.round((item.per_100g.kcal * item.grams) / 100)} <small>ккал</small>
+                      {item.grams !== null ? (
+                        <>
+                          <button
+                            aria-label={`Уменьшить массу ${index + 1}`}
+                            onClick={() => changeComponentGrams(index, (item.grams ?? 0) - 10)}
+                          >
+                            −
+                          </button>
+                          <label>
+                            Масса, г
+                            <input
+                              aria-label={`Масса ингредиента ${index + 1}`}
+                              type="number"
+                              min={0}
+                              max={5000}
+                              step="0.1"
+                              value={Math.round(item.grams * 10) / 10}
+                              onChange={(e) => changeComponentGrams(index, Number(e.target.value))}
+                            />
+                          </label>
+                          <button
+                            aria-label={`Увеличить массу ${index + 1}`}
+                            onClick={() => changeComponentGrams(index, (item.grams ?? 0) + 10)}
+                          >
+                            +
+                          </button>
+                        </>
+                      ) : (
+                        <span className="unknown-mass" aria-label="Масса соуса неизвестна">
+                          — г
+                        </span>
+                      )}
+                      <strong className="component-kcal">
+                        {componentCalories[index]} <small>ккал</small>
                       </strong>
                     </div>
-                    <p className="subtle">
-                      {item.confidence >= 0.8
-                        ? 'Уверенность в составе: высокая'
-                        : item.confidence >= 0.5
-                          ? 'Уверенность в составе: средняя'
-                          : 'Уверенность в составе: низкая'}{' '}
-                      · Масса по фото приблизительна
-                      {item.grams_range[0] !== item.grams_range[1]
-                        ? ` (${item.grams_range.join('–')} г)`
-                        : ''}
-                    </p>
                   </section>
                 ))}
               </div>
-              <div className="additions">
-                <p>
-                  <b>Масло, соль, специи (авто): +{Math.round(totals?.additionsKcal ?? 0)} ккал</b>
-                </p>
-                <label className="field">
-                  Уровень автодобавок
-                  <select value={level} onChange={(e) => setLevel(Number(e.target.value))}>
-                    <option value={0}>Нет</option>
-                    <option value={0.5}>Мало</option>
-                    <option value={1}>Норма</option>
-                    <option value={1.5}>Много</option>
-                  </select>
-                </label>
-                {totals?.sauceUnknown && (
-                  <p className="subtle">
-                    Калории соуса включены, но его БЖУ неизвестны. Для точного учёта отключите
-                    автодобавки и внесите соус по этикетке отдельным ингредиентом.
-                  </p>
-                )}
+              <div className="result-summary" aria-label="Итого блюдо" aria-live="polite">
+                <span>Итого</span>
+                <div className="meal-total-values">
+                  <strong className="result-kcal">
+                    {Math.round(totals?.nutrients.kcal ?? 0)} <small>ккал</small>
+                  </strong>
+                  <strong
+                    className="result-grams"
+                    aria-label={
+                      totals?.sauceUnknown ? 'Известная масса без массы соуса' : 'Общая масса блюда'
+                    }
+                  >
+                    {totals?.sauceUnknown ? '≥ ' : ''}
+                    {displayGrams(totals?.mealGrams ?? 0)} <small>г</small>
+                  </strong>
+                </div>
               </div>
-              <div className="ingredient-search">
-                <label className="field">
-                  Добавить ингредиент
-                  <input
-                    value={lookupName}
-                    onChange={(e) => setLookupName(e.target.value)}
-                    maxLength={160}
-                    placeholder="Название, вид, бренд"
-                  />
-                </label>
-                <button
-                  className="secondary"
-                  disabled={busy || !lookupName.trim() || result.ingredients.length >= 30}
-                  onClick={() => void addIngredient()}
-                >
-                  Найти КБЖУ через ИИ
-                </button>
-              </div>
-              {result.clarifying_questions.map((question) => (
-                <fieldset className="clarification" key={question.question}>
-                  <legend>{question.question}</legend>
-                  <div className="chips">
-                    {question.options.map((option) => (
-                      <button
-                        key={option}
-                        aria-pressed={answers[question.question] === option}
-                        onClick={() => setAnswers({ ...answers, [question.question]: option })}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-              ))}
             </>
           )}
-          {result.warnings.map((warning, index) => (
-            <p className="warning" key={index}>
-              {warning}
-            </p>
-          ))}
         </>
       )}
-      <label className="field">
-        {result ? 'Уточнение состава' : 'Подсказка для ИИ (необязательно)'}
-        <input
-          value={hint}
-          maxLength={500}
-          onChange={(e) => setHint(e.target.value)}
-          placeholder="Например: порция 400 г, без масла"
-        />
-      </label>
-      <label className="field">
-        Качество
-        <select value={quality} onChange={(e) => setQuality(e.target.value as Quality)}>
-          <option value="fast">Экономно</option>
-          <option value="accurate">Точно — всё равно приблизительная оценка</option>
-        </select>
-      </label>
-      {(config?.access_code_required || error.includes('код доступа')) && (
-        <label className="field">
-          Код доступа к серверу
-          <input
-            type="password"
-            value={access}
-            onChange={(e) => setAccess(e.target.value)}
-            autoComplete="off"
-            maxLength={128}
-          />
-        </label>
+      {!result && (
+        <>
+          <label className="field">
+            Подсказка для ИИ (необязательно)
+            <input
+              value={hint}
+              maxLength={500}
+              onChange={(e) => setHint(e.target.value)}
+              placeholder="Например: порция 400 г, без масла"
+            />
+          </label>
+          <label className="field">
+            Качество
+            <select value={quality} onChange={(e) => setQuality(e.target.value as Quality)}>
+              <option value="fast">Экономно</option>
+              <option value="accurate">Точно — всё равно приблизительная оценка</option>
+            </select>
+          </label>
+          {(config?.access_code_required || error.includes('код доступа')) && (
+            <label className="field">
+              Код доступа к серверу
+              <input
+                type="password"
+                value={access}
+                onChange={(e) => setAccess(e.target.value)}
+                autoComplete="off"
+                maxLength={128}
+              />
+            </label>
+          )}
+          <label className="consent">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => rememberConsent(e.target.checked)}
+            />
+            <span>
+              Разрешаю отправить описание и выбранные фото на {serverLabel} и далее провайдеру ИИ.
+              Сервер приложения их не сохраняет; обработка провайдером — по его политике. Отозвать
+              согласие можно в профиле.
+            </span>
+          </label>
+        </>
       )}
-      <label className="consent">
-        <input
-          type="checkbox"
-          checked={consent}
-          onChange={(e) => rememberConsent(e.target.checked)}
-        />
-        <span>
-          Разрешаю отправить описание и выбранные фото на {serverLabel} и далее провайдеру ИИ.
-          Сервер приложения их не сохраняет; обработка провайдером — по его политике. Отозвать
-          согласие можно в профиле.
-        </span>
-      </label>
       {busy ? (
         <div className="analysis-busy" role="status">
           <span className="spinner" />
@@ -606,51 +486,45 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
             Отменить запрос
           </button>
         </div>
-      ) : (
-        <>
-          <button className="primary" onClick={() => void analyze(Boolean(result))}>
-            {result ? 'Уточнить у ИИ (новый запрос)' : 'Определить КБЖУ'}
-          </button>
-          {result?.is_food && (
-            <button
-              className="primary save-analysis"
-              disabled={!result.ingredients.length || !result.dish_name.trim()}
-              onClick={() => void save()}
-            >
-              {demo ? 'Сохранить демозапись' : 'Сохранить блюдо'}
-            </button>
-          )}
-        </>
-      )}
-      {daily && (
-        <p className="subtle usage-note">
-          Разборы: {daily.analyses} / {daily.analysis_limit} сегодня (UTC).
-          {fromCache ? ' Кеш не расходует запрос.' : ''}
-        </p>
-      )}
+      ) : !result ? (
+        <button className="primary" onClick={() => void analyze()}>
+          Определить КБЖУ
+        </button>
+      ) : result.is_food ? (
+        <button
+          className="primary save-analysis"
+          disabled={
+            !result.ingredients.length || !result.dish_name.trim() || (totals?.mealGrams ?? 0) <= 0
+          }
+          onClick={() => void save()}
+        >
+          {demo ? 'Сохранить демозапись' : 'Сохранить блюдо'}
+        </button>
+      ) : null}
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      <div className="dialog-footer">
-        <button
-          className="text-button"
-          disabled={busy}
-          onClick={() => {
-            setResult(undefined);
-            setPhotos([]);
-            setAnswers({});
-            setError('');
-            setText('');
-          }}
-        >
-          Новое блюдо
-        </button>
-        <button className="text-button" disabled={busy} onClick={onManual}>
-          Внести КБЖУ вручную
-        </button>
-      </div>
+      {!result && (
+        <div className="dialog-footer">
+          <button
+            className="text-button"
+            disabled={busy}
+            onClick={() => {
+              setResult(undefined);
+              setPhotos([]);
+              setError('');
+              setText('');
+            }}
+          >
+            Новое блюдо
+          </button>
+          <button className="text-button" disabled={busy} onClick={onManual}>
+            Внести КБЖУ вручную
+          </button>
+        </div>
+      )}
     </dialog>
   );
   async function awaitCamera() {
@@ -659,6 +533,22 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
       if (source) await addSources([source]);
     } catch (error) {
       fail(error);
+    }
+  }
+  function changeComponentGrams(index: number, grams: number) {
+    const item = totals?.components[index];
+    if (!result || !item || !Number.isFinite(grams)) return;
+    if (item.ingredientIndex !== undefined) {
+      changeGrams(item.ingredientIndex, grams);
+    } else if (item.additionKey && totals && totals.multiplier > 0) {
+      const max = item.additionKey === 'salt_g' ? 20 : 100;
+      setResult({
+        ...result,
+        hidden_additions: {
+          ...result.hidden_additions,
+          [item.additionKey]: Math.min(max, Math.max(0, grams / totals.multiplier)),
+        },
+      });
     }
   }
   function changeGrams(index: number, grams: number) {

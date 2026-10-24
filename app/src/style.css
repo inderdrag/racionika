@@ -750,12 +750,45 @@ dialog > .subtle {
   width: 44px;
 }
 .result-summary {
-  padding: 8px 0 20px;
-  border-bottom: 1px solid var(--line);
+  padding: 18px;
+  margin: 20px 0 16px;
+  background: var(--surface-soft);
+  border-radius: 16px;
+}
+.meal-name {
+  margin: 20px 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ingredient-title {
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.meal-total-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+.result-grams {
+  font-size: 22px;
+  white-space: nowrap;
+}
+.result-grams small {
+  font-size: 16px;
+  font-weight: 400;
+}
+.unknown-mass {
+  flex: 1;
+  color: var(--muted);
 }
 .result-kcal {
-  font-size: 42px;
-  letter-spacing: -1.5px;
+  font-size: 36px;
+  letter-spacing: -1px;
   color: var(--accent);
 }
 .result-kcal small {

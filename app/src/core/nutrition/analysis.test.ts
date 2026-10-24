@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { analysisTotals, normalizeAnalysis } from './analysis';
+import {
+  analysisTotals,
+  normalizeAnalysis,
+  aggregatePer100,
+  roundedComponentCalories,
+} from './analysis';
 import { DEMO_MEAL } from '../../../../server/src/providers/mock';
 describe('КБЖУ и скрытые добавки', () => {
   it('считает порции в коде', () => {
@@ -37,5 +42,61 @@ describe('Проверка пищевых значений', () => {
     const food = structuredClone(DEMO_MEAL);
     food.ingredients[0].per_100g = { kcal: 500, protein: 80, fat: 80, carbs: 80 };
     expect(() => normalizeAnalysis(food)).toThrow();
+  });
+});
+
+describe('Простой состав и итоги', () => {
+  it('включает масло и соль в массу блюда, а все калории — в строки', () => {
+    const total = analysisTotals(DEMO_MEAL, 1, 330);
+    expect(total.mealGrams).toBe(336);
+    expect(total.components.reduce((sum, row) => sum + row.kcal, 0)).toBeCloseTo(
+      total.nutrients.kcal,
+    );
+    expect(total.components.reduce((sum, row) => sum + (row.grams ?? 0), 0)).toBeCloseTo(
+      total.mealGrams,
+    );
+    expect(roundedComponentCalories(total.components)).toEqual([248, 234, 45, 0]);
+  });
+  it('не придумывает массу соуса', () => {
+    const food = structuredClone(DEMO_MEAL);
+    food.hidden_additions.sauce_kcal = 50;
+    const total = analysisTotals(food, 1, 330);
+    expect(total.components.find((row) => row.name === 'Соус')).toMatchObject({
+      grams: null,
+      kcal: 50,
+    });
+    expect(total.sauceUnknown).toBe(true);
+    expect(total.mealGrams).toBe(336);
+  });
+  it('сохранение общего веса не меняет калорийность', () => {
+    const saved = aggregatePer100(DEMO_MEAL, 1, 330);
+    expect(saved.grams).toBe(336);
+    expect((saved.per100.kcal * saved.grams) / 100).toBeCloseTo(526.5);
+  });
+  it('без автодобавок масса состоит только из основных продуктов', () => {
+    const total = analysisTotals(DEMO_MEAL, 0, 330);
+    expect(total.components).toHaveLength(2);
+    expect(total.mealGrams).toBe(330);
+  });
+  it('нулевая порция не оставляет скрытые калории и массу', () => {
+    const food = structuredClone(DEMO_MEAL);
+    food.ingredients = food.ingredients.map((row) => ({ ...row, grams: 0 }));
+    const total = analysisTotals(food, 1, 330);
+    expect(total.mealGrams).toBe(0);
+    expect(total.nutrients.kcal).toBe(0);
+  });
+  it('округлённые строки всегда складываются в округлённый итог', () => {
+    for (let count = 0; count < 40; count++) {
+      const rows = Array.from({ length: count }, (_, index) => ({
+        name: 'Тест',
+        grams: 1,
+        kcal: (index * 3.17 + count * 0.13) % 17,
+      }));
+      const display = roundedComponentCalories(rows);
+      expect(display.reduce((sum, value) => sum + value, 0)).toBe(
+        Math.round(rows.reduce((sum, row) => sum + row.kcal, 0)),
+      );
+      expect(display.every((value) => value >= 0)).toBe(true);
+    }
   });
 });

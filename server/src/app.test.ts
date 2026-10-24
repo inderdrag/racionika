@@ -40,7 +40,7 @@ describe('Сервер ИИ', () => {
   });
   it('health и честный деморежим', async () => {
     const app = await server();
-    expect((await app.inject('/health')).json()).toEqual({ status: 'ok', version: '0.2.0' });
+    expect((await app.inject('/health')).json()).toEqual({ status: 'ok', version: '0.2.1' });
     expect((await app.inject('/v1/config')).json().mode).toBe('demo');
   });
   it('закрыт без JWT', async () => {

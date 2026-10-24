@@ -12,6 +12,7 @@ test('ручной ввод как запасной путь, вода и пер
   await page.getByRole('button', { name: 'Сохранить запись' }).click();
   await expect(page.locator('.calorie-orbit strong')).toHaveText('150');
   await page.getByRole('button', { name: '+200', exact: true }).click();
+  await expect(page.locator('.water .section-head>strong')).toHaveText('200 мл');
   await page.reload();
   await expect(page.locator('.calorie-orbit strong')).toHaveText('150');
   await expect(page.locator('.water .section-head>strong')).toHaveText('200 мл');
@@ -36,11 +37,19 @@ test('описание → состав → локальный пересчёт 
   expect(requests).toBe(1);
   await page.getByRole('button', { name: 'Сохранить демозапись' }).click();
   await expect(page.locator('.calorie-orbit strong')).toHaveText('794');
-  await expect(page.getByText(/330|480/).first()).toBeVisible();
+  await expect(page.getByText(/489 г/).first()).toBeVisible();
   await page.reload();
   await expect(page.locator('.calorie-orbit strong')).toHaveText('794');
+  let configRequests = 0;
+  await page.route('**/v1/config', (route) => {
+    configRequests++;
+    return route.abort();
+  });
   await page.getByRole('button', { name: /^Демо: курица с рисом/ }).click();
   await expect(page.getByLabel('Масса ингредиента 1', { exact: true })).toHaveValue('300');
+  await expect(page.getByRole('dialog').getByRole('alert')).toHaveCount(0);
+  expect(configRequests).toBe(0);
+  await expect(page.getByText('ДЕМО: фиксированный пример, без распознавания')).toBeVisible();
 });
 test('фото: сжатие JPEG, согласие, пометка демо', async ({ page }) => {
   await page.goto('/');
@@ -106,12 +115,15 @@ test('повтор того же описания использует лока�
       .getByRole('button', { name: 'Определить КБЖУ', exact: true })
       .click();
     await expect(page.locator('.result-kcal')).toContainText('527');
-    if (i === 1) await expect(page.getByText(/Кеш не расходует запрос/)).toBeVisible();
     await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
   }
   expect(requests).toBe(1);
 });
-test('lookup ингредиента и автодобавки пересчитываются', async ({ page }) => {
+test('в результате только состав, граммы и калории; добавки входят в сумму', async ({ page }) => {
+  let requests = 0;
+  page.on('request', (req) => {
+    if (req.url().includes('/v1/analyze-text')) requests++;
+  });
   await page.goto('/');
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Курица с рисом');
@@ -121,13 +133,72 @@ test('lookup ингредиента и автодобавки пересчиты
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
     .click();
   await expect(page.locator('.result-kcal')).toContainText('527');
-  await page.getByLabel('Уровень автодобавок').selectOption('0');
+  await expect(page.locator('.result-grams')).toHaveText('336 г');
+  await expect(page.locator('.ingredient-title')).toHaveText([
+    'Куриная грудка, запечённая',
+    'Рис белый, варёный',
+    'Масло',
+    'Соль',
+  ]);
+  const calories = await page.locator('.component-kcal').allTextContents();
+  expect(calories.reduce((sum, value) => sum + Number.parseInt(value), 0)).toBe(527);
+  for (const selector of [
+    '.additions',
+    '.ingredient-search',
+    '.clarification',
+    '.usage-note',
+    '.consent',
+    '.warning',
+  ])
+    await expect(page.getByRole('dialog').locator(selector)).toHaveCount(0);
+  await expect(page.getByLabel('Качество', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Уточнить у ИИ (новый запрос)' })).toHaveCount(0);
+  await page.getByLabel('Масса ингредиента 3', { exact: true }).fill('0');
   await expect(page.locator('.result-kcal')).toContainText('482');
-  await page.getByLabel('Добавить ингредиент', { exact: true }).fill('яблоко');
-  await page.getByRole('button', { name: 'Найти КБЖУ через ИИ' }).click();
-  await expect(page.getByLabel('Название ингредиента 3')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Сохранить демозапись' })).toBeVisible();
+  await expect(page.locator('.result-grams')).toHaveText('331 г');
+  expect(requests).toBe(1);
 });
+for (const kind of ['text', 'photo'] as const) {
+  test(`чистый результат ${kind}: одинаковый экран реального режима`, async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await page.route('**/v1/config', async (route) => {
+      const response = await route.fetch();
+      const data = await response.json();
+      await route.fulfill({ response, json: { ...data, mode: 'real' } });
+    });
+    await page.route(
+      `**/v1/${kind === 'photo' ? 'analyze-meal' : 'analyze-text'}`,
+      async (route) => {
+        const response = await route.fetch();
+        const data = await response.json();
+        await route.fulfill({ response, json: { ...data, demo: false } });
+      },
+    );
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
+    if (kind === 'photo') {
+      await page.getByRole('button', { name: 'По фото', exact: true }).click();
+      const png = await page.screenshot();
+      await page
+        .locator('input[type=file]')
+        .setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: png });
+    } else await page.getByLabel('Что вы съели?').fill('Курица с рисом');
+    await page.locator('.consent input').check();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Определить КБЖУ', exact: true })
+      .click();
+    await expect(page.locator('.result-kcal')).toContainText('527');
+    await expect(page.locator('.result-grams')).toHaveText('336 г');
+    await expect(
+      page.getByRole('dialog').locator('.ai-mode, .subtle, textarea, select, .consent'),
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Сохранить блюдо', exact: true })).toBeVisible();
+    expect(await page.getByRole('dialog').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+      true,
+    );
+  });
+}
 test('серверная ошибка квоты понятна и ручной ввод остаётся', async ({ page }) => {
   await page.route('**/v1/analyze-text', (route) =>
     route.fulfill({
