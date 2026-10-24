@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { signingInputs, releaseVersionCode, certificateHash } from './android-signing.mjs';
 const env = {
@@ -43,4 +44,13 @@ test('rejects invalid, unsafe or overflow build counters', () => {
   for (const run of [undefined, '0', '-1', '1.5', 'NaN', '2100000000'])
     assert.throws(() => releaseVersionCode(run));
   assert.throws(() => releaseVersionCode('1', '0'));
+});
+
+test('Gradle versionCode uses assignment before numeric conversion', () => {
+  const gradle = readFileSync(new URL('../app/android/app/build.gradle', import.meta.url), 'utf8');
+  assert.match(
+    gradle,
+    /^\s*versionCode\s*=\s*\(System\.getenv\('ANDROID_VERSION_CODE'\)\s*\?:\s*'5'\)\.toInteger\(\)\s*$/m,
+  );
+  assert.doesNotMatch(gradle, /^\s*versionCode\s+\(/m);
 });
