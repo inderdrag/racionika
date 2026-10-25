@@ -1308,3 +1308,122 @@ select {
   font-weight: 400;
   white-space: nowrap;
 }
+
+/* Progress: local diary data, no chart library or network dependency. */
+.progress-period {
+  display: grid;
+  gap: 12px;
+}
+.progress-period-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.progress-period-buttons button {
+  width: 100%;
+}
+.progress-period .subtle,
+.progress-coverage {
+  font-size: 14px;
+}
+.progress-chart {
+  --chart-color: var(--accent);
+}
+.progress-water {
+  --chart-color: var(--water);
+}
+.progress-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.progress-average {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin-top: 16px;
+}
+.progress-average strong {
+  color: var(--chart-color);
+  font-size: 30px;
+  letter-spacing: -1px;
+}
+.progress-average span {
+  font-size: 14px;
+}
+.progress-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 12px 0 4px;
+  overflow: visible;
+}
+.progress-grid line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.progress-grid text,
+.progress-axis {
+  fill: var(--muted);
+  font-family: var(--font);
+  font-size: 14px;
+}
+.progress-marks {
+  fill: var(--chart-color);
+  stroke: var(--chart-color);
+}
+.progress-marks line {
+  stroke-width: 2;
+}
+.progress-change {
+  margin-top: 8px;
+}
+.progress-values {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.progress-values summary,
+.progress-history summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 12px 0;
+  font-weight: 600;
+}
+.progress-values table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.progress-values th,
+.progress-values td {
+  text-align: left;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+}
+.progress-values tr > :last-child {
+  text-align: right;
+}
+.progress-empty {
+  margin-top: 16px;
+}
+.weight-plan .text-button {
+  display: block;
+  margin-top: 8px;
+}
+.weight-plan .plan-preview {
+  margin-block: 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
