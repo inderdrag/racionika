@@ -54,7 +54,8 @@ export function personalPlan(input: UserProfile) {
     return blocked('Целевой вес не соответствует направлению цели. Проверьте параметры профиля.');
   const bmr = 10 * p.weight + 6.25 * p.height - 5 * p.age + (p.sex === 'male' ? 5 : -161);
   const tdee = bmr * Number(p.activity);
-  const floor = p.sex === 'male' ? 1500 : 1200;
+  // App guardrails, not individual medical recommendations.
+  const floor = p.sex === 'male' ? 1500 : 1300;
   if (tdee < floor)
     return blocked(
       'Расчётный расход ниже стандартной безопасной границы. Нужна индивидуальная консультация, а не автоматическая диета.',

@@ -30,6 +30,11 @@ async function saveCustom(page: Page, calories: string) {
   await page.getByLabel('Моя цель, ккал в день', { exact: true }).fill(calories);
   await page.getByRole('button', { name: 'Рассчитать мой план', exact: true }).click();
   await expect(page.locator('.plan-preview > strong')).toContainText(calories);
+  const confirmation = page.getByRole('checkbox', {
+    name: 'Понимаю, что выбрал цель ниже расчётной.',
+    exact: true,
+  });
+  if (await confirmation.count()) await confirmation.check();
   await page.getByRole('button', { name: 'Сохранить профиль', exact: true }).click();
 }
 test('своя цель сохраняется, меняет БЖУ и передаётся наставнику', async ({ page }) => {
@@ -142,4 +147,83 @@ test('слишком низкая цель не сохраняется, пред
       () => JSON.parse(localStorage.getItem('racionika.profile')!).customCalories,
     ),
   ).toBeUndefined();
+});
+
+test('подтверждение цели ниже расчётной обязательно и сбрасывается после нового расчёта', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await edit(page);
+  await page.getByLabel('Расчёт калорий', { exact: true }).selectOption('custom');
+  await page.getByLabel('Моя цель, ккал в день', { exact: true }).fill('2000');
+  await page.getByRole('button', { name: 'Рассчитать мой план', exact: true }).click();
+  const save = page.getByRole('button', { name: 'Сохранить профиль', exact: true });
+  const confirm = page.getByRole('checkbox', {
+    name: 'Понимаю, что выбрал цель ниже расчётной.',
+    exact: true,
+  });
+  await expect(confirm).not.toBeChecked();
+  await expect(save).toBeDisabled();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem('racionika.profile')!).customCalories,
+    ),
+  ).toBeUndefined();
+  await confirm.check();
+  await expect(save).toBeEnabled();
+  await confirm.uncheck();
+  await expect(save).toBeDisabled();
+  await confirm.check();
+  await page.getByRole('button', { name: 'Изменить параметры', exact: true }).click();
+  await page.getByLabel('Моя цель, ккал в день', { exact: true }).fill('1900');
+  await page.getByRole('button', { name: 'Рассчитать мой план', exact: true }).click();
+  await expect(confirm).not.toBeChecked();
+  await expect(save).toBeDisabled();
+  await confirm.check();
+  await save.click();
+  await page.reload();
+  await expect(page.locator('.energy-copy')).toContainText('1900 ккал');
+});
+
+test('автоматическая и более высокая ручная цель не требуют лишней галочки', async ({ page }) => {
+  await page.goto('/');
+  await edit(page);
+  await page.getByRole('button', { name: 'Рассчитать мой план', exact: true }).click();
+  const confirm = page.getByRole('checkbox', {
+    name: 'Понимаю, что выбрал цель ниже расчётной.',
+    exact: true,
+  });
+  const save = page.getByRole('button', { name: 'Сохранить профиль', exact: true });
+  await expect(confirm).toHaveCount(0);
+  await expect(save).toBeEnabled();
+  await page.getByRole('button', { name: 'Изменить параметры', exact: true }).click();
+  await page.getByLabel('Расчёт калорий', { exact: true }).selectOption('custom');
+  await page.getByLabel('Моя цель, ккал в день', { exact: true }).fill('2300');
+  await page.getByRole('button', { name: 'Рассчитать мой план', exact: true }).click();
+  await expect(page.locator('.plan-preview > strong')).toContainText('2300');
+  await expect(confirm).toHaveCount(0);
+  await expect(save).toBeEnabled();
+});
+
+test('женский профиль может сохранить 1300 только при допустимом персональном расчёте', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await edit(page);
+  await page.getByLabel('Пол для расчёта').selectOption('female');
+  await page.getByLabel('Возраст, лет').fill('55');
+  await page.getByLabel('Рост, см').fill('150');
+  await page.getByLabel('Вес, кг', { exact: true }).fill('65');
+  await page.getByLabel('Расчёт калорий', { exact: true }).selectOption('custom');
+  const value = page.getByLabel('Моя цель, ккал в день', { exact: true });
+  await expect(value).toHaveAttribute('min', '1300');
+  await value.fill('1300');
+  await page.getByRole('button', { name: 'Рассчитать мой план', exact: true }).click();
+  await expect(page.locator('.plan-preview > strong')).toContainText('1300');
+  await page
+    .getByRole('checkbox', { name: 'Понимаю, что выбрал цель ниже расчётной.', exact: true })
+    .check();
+  await page.getByRole('button', { name: 'Сохранить профиль', exact: true }).click();
+  await page.reload();
+  await expect(page.locator('.energy-copy')).toContainText('1300 ккал');
 });

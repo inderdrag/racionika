@@ -1016,6 +1016,11 @@ dialog > .subtle {
 .notification-settings .primary {
   width: 100%;
 }
+.profile-form > .text-button {
+  display: flex;
+  width: fit-content;
+  min-height: 44px;
+}
 .profile-form .primary {
   width: 100%;
   margin-top: 16px;

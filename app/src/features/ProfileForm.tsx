@@ -18,8 +18,11 @@ export function ProfileForm({
   const [preview, setPreview] = useState<UserProfile>();
   const [consent, setConsent] = useState(initial ? hasAiConsent() : false);
   const [error, setError] = useState('');
+  const [lowerGoalConfirmed, setLowerGoalConfirmed] = useState(false);
   const [draft, setDraft] = useState<UserProfile | undefined>(initial);
   const plan = preview ? personalPlan(preview) : undefined;
+  const needsLowerGoalConfirmation =
+    plan?.status === 'ready' && plan.source === 'custom' && plan.calories < plan.automaticCalories;
   function calculate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -49,6 +52,7 @@ export function ProfileForm({
         setError(result.message);
         return;
       }
+      setLowerGoalConfirmed(false);
       setDraft(profile);
       setPreview(profile);
       window.scrollTo(0, 0);
@@ -60,6 +64,10 @@ export function ProfileForm({
     if (!preview) return;
     if (!initial && !consent) {
       setError('Подтвердите согласие на использование ИИ.');
+      return;
+    }
+    if (needsLowerGoalConfirmation && !lowerGoalConfirmed) {
+      setError('Подтвердите выбор цели ниже расчётной.');
       return;
     }
     try {
@@ -188,7 +196,7 @@ export function ProfileForm({
                   aria-label="Моя цель, ккал в день"
                   type="number"
                   inputMode="numeric"
-                  min={1200}
+                  min={1300}
                   max={5000}
                   step={1}
                   required
@@ -296,7 +304,26 @@ export function ProfileForm({
                 </p>
               </>
             )}
-            <button className="primary" onClick={finish} disabled={!initial && !consent}>
+            {needsLowerGoalConfirmation && (
+              <label className="consent lower-goal-confirmation">
+                <input
+                  type="checkbox"
+                  checked={lowerGoalConfirmed}
+                  onChange={(e) => {
+                    setLowerGoalConfirmed(e.target.checked);
+                    setError('');
+                  }}
+                />
+                <span>Понимаю, что выбрал цель ниже расчётной.</span>
+              </label>
+            )}
+            <button
+              className="primary"
+              onClick={finish}
+              disabled={
+                (!initial && !consent) || (needsLowerGoalConfirmation && !lowerGoalConfirmed)
+              }
+            >
               {initial ? 'Сохранить профиль' : 'Начать'}
             </button>
             <button className="text-button" onClick={() => setPreview(undefined)}>

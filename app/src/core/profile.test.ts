@@ -170,3 +170,39 @@ describe('Ручная цель калорий', () => {
     expect(noLoss.lower! <= noLoss.upper!).toBe(true);
   });
 });
+
+describe('Нижние пороги приложения', () => {
+  const female = {
+    ...profile,
+    sex: 'female' as const,
+    age: 55,
+    height: 150,
+    weight: 65,
+    goal: 'lose' as const,
+    targetWeight: 60,
+  };
+  it('не опускает женский расчёт ниже 1300 ккал', () => {
+    expect(personalPlan({ ...female, pace: 1 }).calories).toBe(1300);
+    expect(personalPlan({ ...female, customCalories: 1300 }).status).toBe('ready');
+    expect(personalPlan({ ...female, customCalories: 1299 }).status).toBe('review');
+  });
+  it('мужской нижний порог 1500 не отменяет персональную проверку дефицита', () => {
+    const male = {
+      ...profile,
+      age: 50,
+      height: 170,
+      weight: 65,
+      goal: 'lose' as const,
+      targetWeight: 60,
+    };
+    expect(personalPlan({ ...male, customCalories: 1500 }).status).toBe('ready');
+    expect(personalPlan({ ...male, customCalories: 1499 }).status).toBe('review');
+    expect(personalPlan({ ...profile, customCalories: 1500 }).status).toBe('review');
+  });
+  it('не теряет сохранённый профиль со старой нормой: возвращает review', () => {
+    const legacy = { ...female, customCalories: 1200 };
+    vi.stubGlobal('localStorage', { getItem: () => JSON.stringify(legacy) });
+    expect(loadProfile()).toEqual(legacy);
+    expect(personalPlan(loadProfile()!).status).toBe('review');
+  });
+});
