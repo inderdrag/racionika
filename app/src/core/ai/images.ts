@@ -2,7 +2,11 @@ export async function compressPhoto(source: string, maxDimension: number): Promi
   // Перерисовка в canvas: в выходном JPEG нет исходных EXIF/геометок.
   const image = new Image();
   image.src = source;
-  await image.decode();
+  try {
+    await image.decode();
+  } catch {
+    throw new Error('Не удалось открыть фото. Используйте JPEG, PNG или WebP.');
+  }
   if (!image.naturalWidth || !image.naturalHeight)
     throw new Error('Не удалось открыть фото. Используйте JPEG, PNG или WebP.');
   const ratio = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));

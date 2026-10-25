@@ -1,11 +1,23 @@
 import { CapacitorHttp } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { shareBackup } from './share-backup';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import type { Platform } from './types';
 export const nativePlatform: Platform = {
+  navigation: {
+    listenBack: async (onBack) => {
+      const listener = await App.addListener('backButton', ({ canGoBack }) => {
+        if (onBack()) return;
+        if (canGoBack) window.history.back();
+        else void App.exitApp();
+      });
+      return () => {
+        void listener.remove();
+      };
+    },
+  },
   camera: {
     pick: async () => {
       try {
@@ -19,8 +31,17 @@ export const nativePlatform: Platform = {
             correctOrientation: true,
           })
         ).dataUrl;
-      } catch {
-        return undefined;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : String((error as { message?: string })?.message ?? error);
+        if (/cancel(?:led|ed)|user_cancel|no (?:image|photo) (?:picked|selected)/i.test(message))
+          return undefined;
+        throw new Error(
+          'Не удалось открыть камеру или галерею. Проверьте разрешения Рационики в настройках Android и попробуйте ещё раз.',
+          { cause: error },
+        );
       }
     },
   },
@@ -58,21 +79,7 @@ export const nativePlatform: Platform = {
       return response.data;
     },
   },
-  share: {
-    json: async (name, value) => {
-      const file = await Filesystem.writeFile({
-        path: name,
-        data: JSON.stringify(value, null, 2),
-        directory: Directory.Cache,
-        encoding: Encoding.UTF8,
-      });
-      try {
-        await Share.share({ url: file.uri });
-      } finally {
-        await Filesystem.deleteFile({ path: name, directory: Directory.Cache });
-      }
-    },
-  },
+  share: { json: shareBackup },
   notifications: {
     replaceDaily: async (items, requestPermission) => {
       if (items.length) {

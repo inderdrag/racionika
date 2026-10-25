@@ -147,6 +147,9 @@ export function ProfileSettings({
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = '';
+              // A failed new selection must never leave an older backup confirmable.
+              setBackup(undefined);
+              setNotice('');
               if (file)
                 void safe(async () => {
                   if (file.size > 20 * 1024 * 1024)
@@ -189,7 +192,7 @@ export function ProfileSettings({
             >
               Подтвердить импорт
             </button>
-            <button className="text-button" onClick={() => setBackup(undefined)}>
+            <button className="text-button" disabled={busy} onClick={() => setBackup(undefined)}>
               Отмена импорта
             </button>
           </div>

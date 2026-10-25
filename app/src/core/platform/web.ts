@@ -1,6 +1,7 @@
 import type { Platform } from './types';
 const timers = new Map<number, ReturnType<typeof setTimeout>>();
 export const webPlatform: Platform = {
+  navigation: { listenBack: async () => () => {} },
   camera: {
     pick: () =>
       new Promise((resolve) => {

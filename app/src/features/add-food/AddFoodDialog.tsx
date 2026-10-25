@@ -364,6 +364,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
                             Масса, г
                             <input
                               aria-label={`Масса ингредиента ${index + 1}`}
+                              inputMode="decimal"
                               type="number"
                               min={0}
                               max={5000}

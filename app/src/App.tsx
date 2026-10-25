@@ -30,6 +30,42 @@ export function App() {
   const [customWater, setCustomWater] = useState('');
   const [error, setError] = useState('');
   const addButton = useRef<HTMLButtonElement>(null);
+  const backHandler = useRef<() => boolean>(() => false);
+  useEffect(() => {
+    backHandler.current = () => {
+      if (open) {
+        closeDialog();
+        return true;
+      }
+      if (editingProfile) {
+        setEditingProfile(false);
+        return true;
+      }
+      if (tab !== 'home') {
+        setTab('home');
+        return true;
+      }
+      return false;
+    };
+  });
+  useEffect(() => {
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+    void getPlatform()
+      .then(async (platform) => {
+        const stop = await platform.navigation.listenBack(() => backHandler.current());
+        if (disposed) stop();
+        else cleanup = stop;
+      })
+      .catch(() =>
+        setNotice('Не удалось настроить кнопку «Назад». Используйте кнопки приложения.'),
+      );
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
+  }, []);
+
   useEffect(() => {
     const subscription = liveQuery(async () => ({
       entries: await db.foodEntries.where('day').equals(day).sortBy('createdAt'),
@@ -116,7 +152,8 @@ export function App() {
     setOpen(false);
     setManual(false);
     setEditing(undefined);
-    addButton.current?.focus();
+    // Wait until the modal unmounts: background controls are inert while it is open.
+    requestAnimationFrame(() => addButton.current?.focus());
   }
   async function addWater(ml: number) {
     await safely(() =>
@@ -480,6 +517,7 @@ function FoodDialog({
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     dialog.current?.showModal();
+    dialog.current?.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
   }, []);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

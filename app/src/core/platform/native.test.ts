@@ -7,8 +7,19 @@ const mocks = vi.hoisted(() => ({
   getAll: vi.fn(),
   cancel: vi.fn(),
   schedule: vi.fn(),
+  getPhoto: vi.fn(),
+  addListener: vi.fn(),
+  exitApp: vi.fn(),
 }));
 vi.mock('@capacitor/local-notifications', () => ({ LocalNotifications: mocks }));
+vi.mock('@capacitor/camera', () => ({
+  Camera: { getPhoto: mocks.getPhoto },
+  CameraResultType: { DataUrl: 'dataUrl' },
+  CameraSource: { Prompt: 'PROMPT' },
+}));
+vi.mock('@capacitor/app', () => ({
+  App: { addListener: mocks.addListener, exitApp: mocks.exitApp },
+}));
 import { nativePlatform } from './native';
 const old = {
   id: 10001,
@@ -66,5 +77,42 @@ describe('Нативное расписание (подставной Android AP
     expect(mocks.requestPermissions).not.toHaveBeenCalled();
     expect(mocks.schedule).not.toHaveBeenCalled();
     expect(mocks.cancel).toHaveBeenCalledWith({ notifications: [{ id: old.id }] });
+  });
+});
+
+describe('Камера Android (подставной API)', () => {
+  it('возвращает выбранное фото без отправки в сеть', async () => {
+    mocks.getPhoto.mockResolvedValue({ dataUrl: 'data:image/jpeg;base64,fixture' });
+    expect(await nativePlatform.camera.pick()).toBe('data:image/jpeg;base64,fixture');
+  });
+  it('отмена пользователем не является ошибкой', async () => {
+    mocks.getPhoto.mockRejectedValue(new Error('User cancelled photos app'));
+    expect(await nativePlatform.camera.pick()).toBeUndefined();
+  });
+  it('отказ разрешения и сбой камеры не маскируются под отмену', async () => {
+    for (const message of ['Camera permission denied', 'Camera not available']) {
+      mocks.getPhoto.mockRejectedValue({ message });
+      await expect(nativePlatform.camera.pick()).rejects.toThrow('Проверьте разрешения');
+    }
+  });
+});
+describe('Системная кнопка Назад (подставной API)', () => {
+  it('сначала даёт интерфейсу закрыть диалог, не завершает приложение', async () => {
+    const remove = vi.fn();
+    mocks.addListener.mockResolvedValue({ remove });
+    const handler = vi.fn(() => true);
+    const cleanup = await nativePlatform.navigation.listenBack(handler);
+    const callback = mocks.addListener.mock.calls[0][1];
+    callback({ canGoBack: false });
+    expect(handler).toHaveBeenCalledOnce();
+    expect(mocks.exitApp).not.toHaveBeenCalled();
+    cleanup();
+    expect(remove).toHaveBeenCalledOnce();
+  });
+  it('на корневом экране оставляет штатный выход из приложения', async () => {
+    mocks.addListener.mockResolvedValue({ remove: vi.fn() });
+    await nativePlatform.navigation.listenBack(() => false);
+    mocks.addListener.mock.calls[0][1]({ canGoBack: false });
+    expect(mocks.exitApp).toHaveBeenCalledOnce();
   });
 });

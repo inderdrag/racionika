@@ -92,6 +92,7 @@ export function ProfileForm({
                 Возраст, лет
                 <input
                   name="age"
+                  inputMode="numeric"
                   type="number"
                   min={6}
                   max={100}
@@ -104,6 +105,7 @@ export function ProfileForm({
                 Рост, см
                 <input
                   name="height"
+                  inputMode="decimal"
                   type="number"
                   min={100}
                   max={230}
@@ -116,6 +118,7 @@ export function ProfileForm({
                 Вес, кг
                 <input
                   name="weight"
+                  inputMode="decimal"
                   type="number"
                   min={25}
                   max={350}
@@ -152,6 +155,7 @@ export function ProfileForm({
                   Целевой вес, кг
                   <input
                     name="targetWeight"
+                    inputMode="decimal"
                     type="number"
                     min={25}
                     max={350}
@@ -164,6 +168,7 @@ export function ProfileForm({
                   Темп, кг в неделю
                   <input
                     name="pace"
+                    inputMode="decimal"
                     type="number"
                     min={0.1}
                     max={goal === 'gain' ? 0.5 : 1}

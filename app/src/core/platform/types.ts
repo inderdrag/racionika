@@ -7,6 +7,7 @@ export interface ScheduledReminder {
   at: Date;
 }
 export interface Platform {
+  navigation: { listenBack: (onBack: () => boolean) => Promise<() => void> };
   camera: { pick: () => Promise<string | undefined> };
   secureStorage: {
     get: (key: string) => Promise<string | null>;

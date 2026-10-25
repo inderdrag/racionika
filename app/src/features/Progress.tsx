@@ -65,6 +65,7 @@ export function Progress({ profile }: { profile: UserProfile }) {
             <label className="field">
               Вес сегодня, кг
               <input
+                inputMode="decimal"
                 type="number"
                 required
                 min={25}
