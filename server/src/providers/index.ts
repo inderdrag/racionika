@@ -2,8 +2,9 @@ import { z } from 'zod';
 import type { ProviderUsage } from '@racionika/shared';
 import type { ServerConfig } from '../security/config.js';
 import { ApiFailure } from '../security/errors.js';
-import { systemPrompt, type Task } from '../prompts/index.js';
+import { coachTextPrompt, systemPrompt, type Task } from '../prompts/index.js';
 import { mockReply } from './mock.js';
+import { readCoachStream } from './coach-stream.js';
 export interface ProviderInput {
   task: Task;
   data: unknown;
@@ -11,6 +12,7 @@ export interface ProviderInput {
   quality: 'fast' | 'accurate';
   repair: boolean;
   repairReason?: string;
+  onText?: (delta: string) => void;
   signal: AbortSignal;
 }
 export interface ProviderResult {
@@ -163,16 +165,17 @@ export function createProvider(config: ServerConfig, transport: typeof fetch = f
         ? `Предыдущий ответ не прошёл проверку. ${input.repairReason ?? 'Исправь формат и границы чисел.'} Не меняй заданные пользователем массы и этикетку. Верни полный JSON.`
         : undefined,
     });
-    const system = systemPrompt(input.task);
+    const streaming = config.provider === 'anymodel' && input.task === 'coach' && !!input.onText;
+    const system = streaming ? coachTextPrompt() : systemPrompt(input.task);
     const images = input.images ?? [];
-    const maxTokens = input.task === 'meal' ? 4500 : 1800;
+    const maxTokens = input.task === 'meal' ? 4500 : input.onText ? 3200 : 1800;
     let url: string, headers: Record<string, string>, body: unknown;
     if (config.provider === 'anymodel') {
       url = 'https://anymodel.org/v1/chat/completions';
       headers = { Authorization: `Bearer ${config.key}` };
       body = {
         model,
-        stream: false,
+        stream: streaming,
         max_tokens: maxTokens,
         messages: [
           { role: 'system', content: system },
@@ -254,7 +257,7 @@ export function createProvider(config: ServerConfig, transport: typeof fetch = f
         method: 'POST',
         headers: { 'content-type': 'application/json', ...headers },
         body: JSON.stringify(body),
-        signal: AbortSignal.any([input.signal, AbortSignal.timeout(45000)]),
+        signal: AbortSignal.any([input.signal, AbortSignal.timeout(input.onText ? 75000 : 45000)]),
       });
       if (!response.ok) {
         const retry = Number(response.headers.get('retry-after'));
@@ -272,6 +275,7 @@ export function createProvider(config: ServerConfig, transport: typeof fetch = f
           'ИИ временно недоступен. Ручной ввод доступен.',
         );
       }
+      if (streaming) return await readCoachStream(response, input.onText!, input.signal);
       const parsed = parseProviderResponse(config.provider, await boundedJson(response));
       let json: unknown;
       try {

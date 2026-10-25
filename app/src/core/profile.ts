@@ -2,6 +2,15 @@ import { ProfileSchema, type UserProfile } from '@racionika/shared';
 export const PROFILE_KEY = 'racionika.profile';
 export const CONSENT_KEY = 'racionika.aiConsent';
 export const CONSENT_VERSION = 'v2';
+export const COACH_CONTEXT_KEY = 'racionika.coachContextConsent';
+export function hasCoachContextConsent() {
+  return hasAiConsent() && localStorage.getItem(COACH_CONTEXT_KEY) === 'v1';
+}
+export function saveCoachContextConsent(value: boolean) {
+  if (value && hasAiConsent()) localStorage.setItem(COACH_CONTEXT_KEY, 'v1');
+  else localStorage.removeItem(COACH_CONTEXT_KEY);
+  window.dispatchEvent(new Event('racionika:consent'));
+}
 export function loadProfile(): UserProfile | null {
   try {
     return ProfileSchema.parse(JSON.parse(localStorage.getItem(PROFILE_KEY) ?? 'null'));
@@ -16,9 +25,14 @@ export function saveProfile(profile: UserProfile) {
 export function hasAiConsent() {
   return localStorage.getItem(CONSENT_KEY) === CONSENT_VERSION;
 }
-export function saveAiConsent(value: boolean) {
-  if (value) localStorage.setItem(CONSENT_KEY, CONSENT_VERSION);
-  else localStorage.removeItem(CONSENT_KEY);
+export function saveAiConsent(value: boolean, includeCoachContext = false) {
+  if (value) {
+    localStorage.setItem(CONSENT_KEY, CONSENT_VERSION);
+    if (includeCoachContext) localStorage.setItem(COACH_CONTEXT_KEY, 'v1');
+  } else {
+    localStorage.removeItem(CONSENT_KEY);
+    localStorage.removeItem(COACH_CONTEXT_KEY);
+  }
   window.dispatchEvent(new Event('racionika:consent'));
 }
 export function personalPlan(input: UserProfile) {

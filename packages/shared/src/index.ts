@@ -125,6 +125,7 @@ export const LookupResultSchema = z
 export const CoachInputSchema = z
   .object({
     message: z.string().trim().min(1).max(1500),
+    mode: z.enum(['chat', 'tomorrow_menu', 'evening_review', 'weekly_review']).default('chat'),
     summary: z.string().max(6000),
     goal: z.enum(['lose', 'maintain', 'gain']).default('maintain'),
     history: z
@@ -202,3 +203,18 @@ export {
   clearGuessedAdditions,
 } from './meal-review.js';
 export type { MealReviewIssue } from './meal-review.js';
+
+export const CoachModeSchema = z.enum(['chat', 'tomorrow_menu', 'evening_review', 'weekly_review']);
+export type CoachMode = z.infer<typeof CoachModeSchema>;
+export const CoachJobSchema = z
+  .object({
+    id: z.string().uuid(),
+    status: z.enum(['running', 'done', 'cancelled', 'error']),
+    text: z.string().max(6000),
+    streamed: z.boolean(),
+    demo: z.boolean(),
+    error: ApiErrorSchema.shape.error.optional(),
+  })
+  .strict();
+export type CoachJobSnapshot = z.infer<typeof CoachJobSchema>;
+export const CoachJobCreatedSchema = z.object({ id: z.string().uuid() }).strict();

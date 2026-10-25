@@ -8,6 +8,9 @@ import {
   AnalysisResponseSchema,
   LookupResponseSchema,
   CoachResponseSchema,
+  CoachJobSchema,
+  CoachJobCreatedSchema,
+  type CoachMode,
   UsageSchema,
   type Quality,
 } from '@racionika/shared';
@@ -164,11 +167,103 @@ export async function askCoach(
   history: { role: 'user' | 'assistant'; text: string }[],
   signal: AbortSignal,
   goal: 'lose' | 'maintain' | 'gain' = 'maintain',
+  mode: CoachMode = 'chat',
 ) {
   requireConsent();
   return CoachResponseSchema.parse(
-    await authorized('/v1/coach', { message, summary, history, goal }, signal),
+    await authorized('/v1/coach', { message, summary, history, goal, mode }, signal),
   );
+}
+function raceCoach<T>(promise: Promise<T>, signal: AbortSignal) {
+  return new Promise<T>((resolve, reject) => {
+    const stop = () => reject(new DOMException('Отменено', 'AbortError'));
+    if (signal.aborted) {
+      void promise.catch(() => {});
+      stop();
+      return;
+    }
+    signal.addEventListener('abort', stop, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', stop);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', stop);
+        reject(error);
+      },
+    );
+  });
+}
+function coachDelay(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('Отменено', 'AbortError'));
+      return;
+    }
+    const cancel = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Отменено', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', cancel);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', cancel, { once: true });
+  });
+}
+export async function askCoachProgressively(
+  body: {
+    message: string;
+    summary: string;
+    history: { role: 'user' | 'assistant'; text: string }[];
+    goal: 'lose' | 'maintain' | 'gain';
+    mode: CoachMode;
+  },
+  signal: AbortSignal,
+  onText: (text: string, streamed: boolean) => void,
+) {
+  requireConsent();
+  const effective = AbortSignal.any([signal, AbortSignal.timeout(100000)]);
+  let id: string | undefined,
+    finished = false;
+  try {
+    id = CoachJobCreatedSchema.parse(
+      await raceCoach(authorized('/v1/coach/jobs', body, effective), effective),
+    ).id;
+    while (true) {
+      effective.throwIfAborted();
+      const state = CoachJobSchema.parse(
+        await raceCoach(authorized(`/v1/coach/jobs/${id}`, undefined, effective), effective),
+      );
+      onText(state.text, state.streamed);
+      if (state.status === 'done') {
+        if (!state.text.trim()) throw new AiError('provider_error', 'ИИ прислал пустой ответ.');
+        finished = true;
+        return { text: state.text, demo: state.demo, streamed: state.streamed };
+      }
+      if (state.status === 'error')
+        throw new AiError(
+          state.error?.code ?? 'provider_error',
+          state.error?.message_ru ?? 'Наставник временно недоступен.',
+          state.error?.retry_after,
+        );
+      if (state.status === 'cancelled') throw new AiError('cancelled', 'Запрос остановлен.');
+      await coachDelay(1800, effective);
+    }
+  } catch (error) {
+    if (!signal.aborted && effective.aborted)
+      throw new AiError('provider_timeout', 'Наставник не успел ответить. Попробуйте ещё раз.');
+    throw error;
+  } finally {
+    // Native HTTP may finish an aborted read later; remote cancellation has its own timeout.
+    if (id && !finished) {
+      const cancelling = AbortSignal.timeout(4000);
+      await raceCoach(authorized(`/v1/coach/jobs/${id}/cancel`, {}, cancelling), cancelling).catch(
+        () => {},
+      );
+    }
+  }
 }
 export async function getUsage() {
   return UsageSchema.parse(await authorized('/v1/usage'));

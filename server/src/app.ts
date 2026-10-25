@@ -22,6 +22,8 @@ import { ApiFailure } from './security/errors.js';
 import { Limits, olderVersion } from './security/limits.js';
 import { schemas, type Task } from './prompts/index.js';
 import { createProvider, type Provider, type ProviderInput } from './providers/index.js';
+import { CoachJobs } from './coach/jobs.js';
+import { CoachResultSchema } from '@racionika/shared';
 export async function buildServer(
   options: {
     logging?: boolean;
@@ -36,6 +38,8 @@ export async function buildServer(
   const key = new TextEncoder().encode(config.jwtSecret);
   const active = new Map<string, number>();
   let inFlight = 0;
+  const coachJobs = new CoachJobs(options.now);
+
   const app = Fastify({
     logger: options.logging
       ? {
@@ -59,6 +63,7 @@ export async function buildServer(
     bodyLimit: 6 * 1024 * 1024,
     trustProxy: config.trustProxyHops ? (_address, hop) => hop < config.trustProxyHops : false,
   });
+  app.addHook('onClose', async () => coachJobs.close());
   await app.register(
     helmet,
     config.serveWeb
@@ -114,7 +119,15 @@ export async function buildServer(
       if (olderVersion(payload.appVersion, config.minVersion))
         throw new ApiFailure('upgrade_required', 426, 'Обновите приложение для работы с ИИ.');
       identity.set(request, payload.sub);
-      limits.rate(`device:${payload.sub}`, 10);
+      const progressRead =
+        request.method === 'GET' &&
+        /^\/v1\/coach\/jobs\/[0-9a-f-]{36}$/.test(request.url.split('?')[0]);
+      const cancelling =
+        request.method === 'POST' &&
+        /^\/v1\/coach\/jobs\/[0-9a-f-]{36}\/cancel$/.test(request.url.split('?')[0]);
+      if (progressRead) limits.rate(`coach-poll:${payload.sub}`, 60);
+      else if (cancelling) limits.rate(`coach-cancel:${payload.sub}`, 10);
+      else limits.rate(`device:${payload.sub}`, 10);
     } catch (error) {
       if (error instanceof ApiFailure) throw error;
       throw new ApiFailure(
@@ -311,6 +324,61 @@ export async function buildServer(
       throw new ApiFailure('invalid_input', 400, 'Слишком длинное сообщение или история.');
     return run(request, 'coach', body.data, undefined, 'fast');
   });
+  app.post('/v1/coach/jobs', async (request) => {
+    const body = CoachInputSchema.safeParse(request.body);
+    if (!body.success)
+      throw new ApiFailure('invalid_input', 400, 'Слишком длинное сообщение или контекст.');
+    if (config.maintenance)
+      throw new ApiFailure('maintenance', 503, 'Наставник временно на обслуживании.');
+    if (!config.enabled) throw new ApiFailure('provider_error', 503, 'ИИ не настроен на сервере.');
+    const owner = identity.get(request)!;
+    if ((active.get(owner) ?? 0) >= 1 || inFlight >= 8)
+      throw new ApiFailure('rate_limited', 429, 'Дождитесь завершения предыдущего запроса.', 5);
+    limits.consume(owner, request.ip, 'chat');
+    limits.providerCall();
+    active.set(owner, 1);
+    inFlight++;
+    const release = () => {
+      active.delete(owner);
+      inFlight--;
+    };
+    try {
+      return coachJobs.create(
+        owner,
+        config.mock,
+        async (signal, onText) => {
+          const result = await provider({
+            task: 'coach',
+            data: body.data,
+            quality: 'fast',
+            repair: false,
+            signal: AbortSignal.any([signal, AbortSignal.timeout(85000)]),
+            onText,
+          });
+          const parsed = CoachResultSchema.safeParse(result.json);
+          if (!parsed.success)
+            throw new ApiFailure(
+              'bad_ai_output',
+              502,
+              'ИИ вернул некорректный ответ. Попробуйте снова.',
+            );
+          return parsed.data.text;
+        },
+        release,
+      );
+    } catch (error) {
+      release();
+      throw error;
+    }
+  });
+  app.get<{ Params: { id: string } }>(
+    '/v1/coach/jobs/:id',
+    { config: { rateLimit: { max: 360, timeWindow: '1 minute' } } },
+    async (request) => coachJobs.get(identity.get(request)!, request.params.id),
+  );
+  app.post<{ Params: { id: string } }>('/v1/coach/jobs/:id/cancel', async (request) =>
+    coachJobs.cancel(identity.get(request)!, request.params.id),
+  );
   if (config.serveWeb)
     await app.register(staticFiles, {
       root: fileURLToPath(new URL('../../app/dist/', import.meta.url)),

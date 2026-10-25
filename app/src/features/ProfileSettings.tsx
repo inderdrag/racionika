@@ -1,3 +1,8 @@
+import {
+  COACH_CONTEXT_KEY,
+  hasCoachContextConsent,
+  saveCoachContextConsent,
+} from '../core/profile';
 import { useState } from 'react';
 import { APP_VERSION, type UserProfile } from '@racionika/shared';
 import { db, localDay } from '../core/db';
@@ -199,7 +204,12 @@ export function ProfileSettings({
                     ]);
                   },
                 );
-                for (const key of ['racionika.profile', 'racionika.reminders', CONSENT_KEY])
+                for (const key of [
+                  'racionika.profile',
+                  'racionika.reminders',
+                  CONSENT_KEY,
+                  COACH_CONTEXT_KEY,
+                ])
                   localStorage.removeItem(key);
                 await resetAiSession();
                 onReset();
@@ -218,7 +228,7 @@ export function ProfileSettings({
             checked={consent}
             onChange={(e) => {
               const value = e.target.checked;
-              saveAiConsent(value);
+              saveAiConsent(value, true);
               setConsent(value);
               if (!value) void db.aiCache.clear();
             }}
@@ -226,9 +236,27 @@ export function ProfileSettings({
           <span>Использовать ИИ</span>
         </label>
         <p className="subtle">
-          Фото, описания еды, сообщения, профиль и сводка дня передаются через сервер в AnyModel.
-          Чат использует последние 10 сообщений. Отключение останавливает новые запросы.
+          Фото, описания еды, сообщения, профиль и сводки передаются через сервер в AnyModel. Чат
+          использует последние 10 сообщений. Расширенный контекст — дневник за 7 дней и вес за 30
+          дней. Отключение останавливает новые запросы.
         </p>
+        <label className="consent">
+          <input
+            type="checkbox"
+            checked={hasCoachContextConsent()}
+            disabled={!consent}
+            onChange={(e) => {
+              saveCoachContextConsent(e.target.checked);
+              setConsent(hasAiConsent());
+              setNotice(
+                e.target.checked
+                  ? 'Контекст наставника включён.'
+                  : 'Наставнику доступен только выбранный день.',
+              );
+            }}
+          />
+          <span>Контекст наставника: 7 дней и динамика веса</span>
+        </label>
       </details>
       {notice && (
         <p className="notice" role="status">

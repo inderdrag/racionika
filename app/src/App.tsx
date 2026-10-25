@@ -414,9 +414,7 @@ export function App() {
               {tab === 'diary' && mealList}
             </>
           )}
-          {tab === 'coach' && profile && (
-            <Coach day={day} totals={totals} entries={entries} water={water} profile={profile} />
-          )}
+          {tab === 'coach' && profile && <Coach day={day} profile={profile} />}
           {tab === 'progress' && profile && <Progress profile={profile} />}
           {tab === 'settings' && profile && (
             <ProfileSettings

@@ -1591,3 +1591,50 @@ select {
 .analysis-check .secondary {
   margin-top: 16px;
 }
+
+.coach-context-caption {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 12px;
+}
+.coach-context-permission {
+  margin-top: 12px;
+  font-size: 14px;
+}
+.coach-context-permission summary {
+  color: var(--accent);
+  min-height: 44px;
+  padding-block: 10px;
+  cursor: pointer;
+}
+.coach-context-permission p {
+  margin: 12px 0;
+}
+.coach-card .coach-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.coach-quick-actions .secondary {
+  min-height: 48px;
+  padding: 12px 8px;
+  font-size: 14px;
+}
+.coach-quick-actions button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.coach-cancel {
+  min-height: 48px;
+  margin-top: 8px;
+  width: 100%;
+}
+.coach-stop-note {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 12px;
+}
+.coach-live {
+  border: 1px solid var(--accent);
+}
