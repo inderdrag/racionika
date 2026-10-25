@@ -1,3 +1,4 @@
+import { CatalogSourceSchema } from './catalog/types';
 import { z } from 'zod';
 import { MealAnalysisSchema, NutrientsSchema, ProfileSchema } from '@racionika/shared';
 import { db } from './db';
@@ -22,6 +23,7 @@ const food = z.object({
   analysis: MealAnalysisSchema.optional(),
   additionsLevel: z.number().min(0).max(1.5).optional(),
   source: z.enum(['ai', 'demo', 'manual', 'label']).optional(),
+  catalogSource: CatalogSourceSchema.optional(),
   baseGrams: z.number().finite().min(0).max(150000).optional(),
   mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).optional(),
   eatenTime: z

@@ -56,7 +56,22 @@ export async function buildServer(
     bodyLimit: 6 * 1024 * 1024,
     trustProxy: config.trustProxyHops ? (_address, hop) => hop < config.trustProxyHops : false,
   });
-  await app.register(helmet);
+  await app.register(
+    helmet,
+    config.serveWeb
+      ? {
+          contentSecurityPolicy: {
+            directives: {
+              connectSrc: [
+                "'self'",
+                'https://search.openfoodfacts.org',
+                'https://world.openfoodfacts.org',
+              ],
+            },
+          },
+        }
+      : {},
+  );
   await app.register(cors, {
     origin: [
       'https://localhost',

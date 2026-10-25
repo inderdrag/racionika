@@ -102,7 +102,15 @@ export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
               <small>
                 {entry.eatenTime ? `${entry.eatenTime} · ` : ''}
                 {Math.round(entry.grams)} г ·{' '}
-                {entry.source === 'demo' ? 'ДЕМО' : entry.analysis ? 'оценка ИИ' : 'ручной ввод'}
+                {entry.source === 'demo'
+                  ? 'ДЕМО'
+                  : entry.catalogSource
+                    ? entry.catalogSource.provider === 'usda'
+                      ? 'USDA'
+                      : 'Open Food Facts'
+                    : entry.analysis
+                      ? 'оценка ИИ'
+                      : 'ручной ввод'}
               </small>
             </span>
             <b>

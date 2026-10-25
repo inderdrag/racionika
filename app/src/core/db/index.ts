@@ -1,3 +1,4 @@
+import type { CatalogSource } from '../catalog/types';
 import Dexie, { type Table } from 'dexie';
 import type { Nutrients, MealAnalysis, AnalysisResponse } from '@racionika/shared';
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -16,6 +17,7 @@ export interface FoodEntry {
   analysis?: MealAnalysis;
   additionsLevel?: number;
   source?: 'ai' | 'demo' | 'manual' | 'label';
+  catalogSource?: CatalogSource;
   baseGrams?: number;
   mealType?: MealType;
   eatenTime?: string;

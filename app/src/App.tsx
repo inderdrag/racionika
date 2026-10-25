@@ -13,6 +13,8 @@ import { useNavigation, type Tab } from './core/navigation';
 import { consistentNutrients, scaleNutrients } from './core/nutrition/meal';
 import { getPlatform } from './core/platform';
 import { entryTotals } from './core/nutrition/analysis';
+import { FoodCatalogDialog } from './features/add-food/FoodCatalogDialog';
+import { CatalogSource } from './features/add-food/CatalogSource';
 import { AddFoodDialog } from './features/add-food/AddFoodDialog';
 import { Coach } from './features/Coach';
 import { t } from './core/i18n';
@@ -25,6 +27,7 @@ export function App() {
   const [water, setWater] = useState(0);
   const [open, setOpen] = useState(false);
   const [manual, setManual] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [editing, setEditing] = useState<FoodEntry>();
   const [notice, setNotice] = useState('');
   const [profile, setProfile] = useState(loadProfile);
@@ -158,6 +161,7 @@ export function App() {
   function closeDialog() {
     setOpen(false);
     setManual(false);
+    setCatalogOpen(false);
     setEditing(undefined);
     // Wait until the modal unmounts: background controls are inert while it is open.
     requestAnimationFrame(() => addButton.current?.focus());
@@ -462,7 +466,7 @@ export function App() {
           ))}
         </nav>
       </div>
-      {open && (manual || (editing && !editing.analysis)) && (
+      {open && !catalogOpen && (manual || (editing && !editing.analysis)) && (
         <FoodDialog
           day={day}
           editing={editing}
@@ -473,12 +477,16 @@ export function App() {
           }}
         />
       )}
-      {open && !manual && (!editing || editing.analysis) && (
+      {open && catalogOpen && (
+        <FoodCatalogDialog day={day} onClose={closeDialog} onSaved={closeDialog} />
+      )}
+      {open && !manual && !catalogOpen && (!editing || editing.analysis) && (
         <AddFoodDialog
           day={day}
           editing={editing}
           onClose={closeDialog}
           onManual={() => setManual(true)}
+          onCatalog={() => setCatalogOpen(true)}
           onSaved={() => {
             setNotice('');
             closeDialog();
@@ -514,12 +522,21 @@ function FoodDialog({
       const name = String(data.get('name') ?? '').trim();
       if (!name || name.length > 160) throw new Error('name');
       const grams = Number(data.get('grams'));
-      const { nutrients, corrected } = consistentNutrients({
+      const inputNutrients = {
         kcal: Number(data.get('kcal')),
         protein: Number(data.get('protein')),
         fat: Number(data.get('fat')),
         carbs: Number(data.get('carbs')),
-      });
+      };
+      const sameReference =
+        Boolean(editing?.catalogSource) &&
+        name === editing?.name &&
+        (['kcal', 'protein', 'fat', 'carbs'] as const).every(
+          (key) => inputNutrients[key] === editing?.per100[key],
+        );
+      const { nutrients, corrected } = sameReference
+        ? { nutrients: inputNutrients, corrected: false }
+        : consistentNutrients(inputNutrients);
       scaleNutrients(nutrients, grams);
       if (grams === 0) throw new Error('grams');
       setBusy(true);
@@ -530,6 +547,8 @@ function FoodDialog({
         name,
         grams,
         per100: nutrients,
+        source: sameReference ? 'label' : 'manual',
+        catalogSource: sameReference ? editing?.catalogSource : undefined,
         createdAt: editing?.createdAt ?? new Date().toISOString(),
       });
       onSaved(corrected);
@@ -584,6 +603,7 @@ function FoodDialog({
             inputMode="decimal"
           />
         </label>
+        {editing?.catalogSource && <CatalogSource source={editing.catalogSource} />}
         <fieldset>
           <legend>На 100 г продукта</legend>
           <div className="form-grid">
@@ -595,7 +615,7 @@ function FoodDialog({
                   type="number"
                   min="0"
                   max={key === 'kcal' ? 1000 : 100}
-                  step="0.1"
+                  step={editing?.catalogSource ? 'any' : '0.1'}
                   required
                   defaultValue={editing?.per100[key] ?? 0}
                   inputMode="decimal"
@@ -605,7 +625,9 @@ function FoodDialog({
           </div>
         </fieldset>
         <p className="subtle">
-          Если ккал расходятся с БЖУ более чем на 15%, используем 4·Б + 4·У + 9·Ж и сообщим об этом.
+          {editing?.catalogSource
+            ? 'Изменение порции сохраняет источник. Изменение названия или КБЖУ превращает запись в ручную.'
+            : 'Если ккал расходятся с БЖУ более чем на 15%, используем 4·Б + 4·У + 9·Ж и сообщим об этом.'}
         </p>
         {error && (
           <p role="alert" className="error">

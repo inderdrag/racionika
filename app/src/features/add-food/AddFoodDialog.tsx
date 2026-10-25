@@ -23,9 +23,10 @@ interface Props {
   editing?: FoodEntry;
   onClose: () => void;
   onManual: () => void;
+  onCatalog: () => void;
   onSaved: () => void;
 }
-export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Props) {
+export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSaved }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const controller = useRef<AbortController | null>(null);
   const [mode, setMode] = useState<'text' | 'photo'>('text');
@@ -256,6 +257,11 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
         <p className="subtle">
           Фото или описание → ингредиенты → КБЖУ. Значения вручную вводить не нужно.
         </p>
+      )}
+      {!result && !editing && (
+        <button className="secondary catalog-open" onClick={onCatalog}>
+          База продуктов
+        </button>
       )}
       {(!result || demo) && (
         <div

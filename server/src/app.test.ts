@@ -28,6 +28,16 @@ async function auth(app: Awaited<ReturnType<typeof server>>, extra = {}) {
   return { authorization: `Bearer ${response.json().token}` };
 }
 describe('Сервер ИИ', () => {
+  it('локальный просмотр сборки разрешает только два внешних домена справочника', async () => {
+    const app = await server({ serveWeb: true });
+    const response = await app.inject('/v1/config');
+    const csp = String(response.headers['content-security-policy']);
+    expect(csp.split(';')).toContain(
+      "connect-src 'self' https://search.openfoodfacts.org https://world.openfoodfacts.org",
+    );
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).not.toContain('connect-src *');
+  });
   it('загрузка сайта не расходует минутный лимит API, защита API сохранена', async () => {
     const app = await server();
     for (let i = 0; i < 70; i++) {

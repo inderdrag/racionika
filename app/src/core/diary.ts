@@ -28,6 +28,7 @@ export function dishKey(entry: FoodEntry) {
     additionsLevel: entry.additionsLevel,
     baseGrams: entry.baseGrams,
     source: entry.source === 'demo' ? 'demo' : undefined,
+    catalogSource: entry.catalogSource,
   });
 }
 export function recentDishes(entries: FoodEntry[], limit = 20) {
