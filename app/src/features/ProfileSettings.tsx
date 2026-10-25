@@ -54,7 +54,14 @@ export function ProfileSettings({
               <strong className="daily-calorie-goal">
                 {plan.calories} <small>ккал</small>
               </strong>
-              <p className="subtle">Рассчитано автоматически по вашим данным.</p>
+              <p className="subtle">
+                {plan.source === 'custom'
+                  ? 'Ваша цель · БЖУ пересчитаны'
+                  : 'Рассчитано автоматически по вашим данным.'}
+              </p>
+              <p className="goal-macros">
+                Б {plan.protein} г · Ж {plan.fat} г · У {plan.carbs} г
+              </p>
             </>
           ) : (
             <p className="subtle">{plan.message}</p>

@@ -209,16 +209,15 @@ main {
 .calorie-orbit {
   width: 138px;
   height: 138px;
-  border: 10px solid var(--surface-soft);
+  position: relative;
 
   border-radius: 50%;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  transform: rotate(-30deg);
 }
 .calorie-orbit > div {
-  transform: rotate(30deg);
+  position: relative;
   text-align: center;
 }
 .calorie-orbit strong {
@@ -265,8 +264,40 @@ main {
 .macro-line {
   height: 4px;
   border-radius: 2px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.macro-line > span {
+  display: block;
+  height: 100%;
   background: currentColor;
-  opacity: 0.6;
+  border-radius: inherit;
+  color: inherit;
+  transition: width 0.25s ease;
+}
+.calorie-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.calorie-ring circle {
+  fill: none;
+  stroke-width: 10;
+}
+.ring-track {
+  stroke: var(--surface-soft);
+}
+.ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: butt;
+  transition: stroke-dasharray 0.25s ease;
+}
+.goal-macros {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 0;
 }
 .protein {
   color: var(--protein);
@@ -1263,4 +1294,12 @@ select {
 .consent-details {
   font-size: 13px;
   line-height: 1.55;
+}
+
+.macros .macro-target {
+  display: block;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+  white-space: nowrap;
 }

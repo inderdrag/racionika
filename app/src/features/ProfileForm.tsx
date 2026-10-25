@@ -11,6 +11,9 @@ export function ProfileForm({
   onDone: (profile: UserProfile) => void;
   onCancel?: () => void;
 }) {
+  const [calorieMode, setCalorieMode] = useState(
+    initial?.customCalories !== undefined ? 'custom' : 'automatic',
+  );
   const [goal, setGoal] = useState(initial?.goal ?? 'maintain');
   const [preview, setPreview] = useState<UserProfile>();
   const [consent, setConsent] = useState(initial ? hasAiConsent() : false);
@@ -33,10 +36,19 @@ export function ProfileForm({
         activity: data.get('activity'),
         goal,
         targetWeight: goal === 'maintain' ? weight : Number(data.get('targetWeight')),
-        pace: goal === 'maintain' ? 0.5 : Number(data.get('pace')),
+        pace:
+          goal === 'maintain' || calorieMode === 'custom'
+            ? (draft?.pace ?? 0.5)
+            : Number(data.get('pace')),
+        ...(calorieMode === 'custom' ? { customCalories: Number(data.get('customCalories')) } : {}),
         individualCare: data.get('individualCare') === 'on',
         updatedAt: new Date().toISOString(),
       });
+      const result = personalPlan(profile);
+      if (calorieMode === 'custom' && result.status !== 'ready') {
+        setError(result.message);
+        return;
+      }
       setDraft(profile);
       setPreview(profile);
       window.scrollTo(0, 0);
@@ -147,12 +159,46 @@ export function ProfileForm({
             </label>
             <label className="field">
               Моя цель
-              <select value={goal} onChange={(e) => setGoal(e.target.value as UserProfile['goal'])}>
+              <select
+                aria-label="Моя цель"
+                value={goal}
+                onChange={(e) => setGoal(e.target.value as UserProfile['goal'])}
+              >
                 <option value="maintain">Поддерживать вес</option>
                 <option value="lose">Снизить вес</option>
                 <option value="gain">Набрать вес</option>
               </select>
             </label>
+            <label className="field">
+              Расчёт калорий
+              <select
+                aria-label="Расчёт калорий"
+                value={calorieMode}
+                onChange={(e) => setCalorieMode(e.target.value)}
+              >
+                <option value="automatic">Автоматически по профилю</option>
+                <option value="custom">Своя цель калорий</option>
+              </select>
+            </label>
+            {calorieMode === 'custom' && (
+              <label className="field">
+                Моя цель, ккал в день
+                <input
+                  name="customCalories"
+                  aria-label="Моя цель, ккал в день"
+                  type="number"
+                  inputMode="numeric"
+                  min={1200}
+                  max={5000}
+                  step={1}
+                  required
+                  defaultValue={
+                    draft?.customCalories ?? (initial ? (personalPlan(initial).calories ?? '') : '')
+                  }
+                />
+                <span className="subtle">БЖУ пересчитаются автоматически.</span>
+              </label>
+            )}
             {goal !== 'maintain' && (
               <div className="form-grid">
                 <label className="field">
@@ -168,19 +214,21 @@ export function ProfileForm({
                     defaultValue={draft?.targetWeight}
                   />
                 </label>
-                <label className="field">
-                  Темп, кг в неделю
-                  <input
-                    name="pace"
-                    inputMode="decimal"
-                    type="number"
-                    min={0.1}
-                    max={goal === 'gain' ? 0.5 : 1}
-                    step="0.1"
-                    required
-                    defaultValue={draft?.pace ?? (goal === 'gain' ? 0.2 : 0.5)}
-                  />
-                </label>
+                {calorieMode === 'automatic' && (
+                  <label className="field">
+                    Темп, кг в неделю
+                    <input
+                      name="pace"
+                      inputMode="decimal"
+                      type="number"
+                      min={0.1}
+                      max={goal === 'gain' ? 0.5 : 1}
+                      step="0.1"
+                      required
+                      defaultValue={draft?.pace ?? (goal === 'gain' ? 0.2 : 0.5)}
+                    />
+                  </label>
+                )}
               </div>
             )}
             <label className="consent">
@@ -211,6 +259,9 @@ export function ProfileForm({
                 </p>
                 <p>Вода: {plan.water} мл — ориентир.</p>
                 {plan.weeks !== null && <p>Расчётный срок: около {plan.weeks} нед.</p>}
+                {plan.source === 'custom' && preview.goal === 'lose' && plan.pace === 0 && (
+                  <p>При этой калорийности снижение веса не прогнозируется.</p>
+                )}
                 {plan.adjusted && (
                   <p>Темп ограничен безопасными границами: около {plan.pace?.toFixed(2)} кг/нед.</p>
                 )}
@@ -219,8 +270,10 @@ export function ProfileForm({
               <p className="notice">{plan?.message}</p>
             )}
             <p className="subtle">
-              Норма рассчитывается автоматически по данным профиля. Это ориентир, не медицинское
-              назначение.
+              {plan?.source === 'custom'
+                ? 'Ваша цель калорий. БЖУ рассчитаны по ней и данным профиля.'
+                : 'Норма рассчитана автоматически по данным профиля.'}{' '}
+              Это ориентир, не медицинское назначение.
             </p>
             {!initial && (
               <>

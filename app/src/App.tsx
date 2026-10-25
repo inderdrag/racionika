@@ -271,7 +271,34 @@ export function App() {
                   <span className="subtle">ккал</span>
                 </div>
                 <div className="energy-display">
-                  <div className="calorie-orbit">
+                  <div
+                    className="calorie-orbit"
+                    role={plan?.status === 'ready' ? 'progressbar' : undefined}
+                    aria-label="Калории за день"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={
+                      plan?.status === 'ready'
+                        ? Math.min(100, Math.round((totals.kcal / plan.calories) * 100))
+                        : undefined
+                    }
+                    aria-valuetext={
+                      plan?.status === 'ready'
+                        ? `${Math.round(totals.kcal)} из ${plan.calories} ккал`
+                        : undefined
+                    }
+                  >
+                    <svg className="calorie-ring" viewBox="0 0 138 138" aria-hidden="true">
+                      <circle className="ring-track" cx="69" cy="69" r="59" />
+                      <circle
+                        className="ring-fill"
+                        cx="69"
+                        cy="69"
+                        r="59"
+                        pathLength="100"
+                        strokeDasharray={`${plan?.status === 'ready' ? Math.min(100, Math.max(0, (totals.kcal / plan.calories) * 100)) : 0} 100`}
+                      />
+                    </svg>
                     <div>
                       <strong>{Math.round(totals.kcal).toLocaleString('ru-RU')}</strong>
                       <span>съедено</span>
@@ -289,7 +316,9 @@ export function App() {
                         <>
                           Ваша цель на день
                           <br />
-                          {Math.max(0, plan.calories - Math.round(totals.kcal))} ккал осталось
+                          {totals.kcal > plan.calories
+                            ? `${Math.round(totals.kcal - plan.calories)} ккал сверх цели`
+                            : `${plan.calories - Math.round(totals.kcal)} ккал осталось`}
                         </>
                       ) : (
                         'Стандартная диета не назначена. Настройте индивидуальный план со специалистом.'
@@ -303,9 +332,18 @@ export function App() {
                       <span>{['Белки', 'Жиры', 'Углеводы'][index]}</span>
                       <strong>
                         {Math.round(totals[key])}
-                        <small> г{plan?.status === 'ready' ? ` / ${plan[key]} г` : ''}</small>
+                        <small> г</small>
+                        {plan?.status === 'ready' && (
+                          <small className="macro-target">из {plan[key]} г</small>
+                        )}
                       </strong>
-                      <div className="macro-line" />
+                      <div className="macro-line">
+                        <span
+                          style={{
+                            width: `${plan?.status === 'ready' && plan[key] > 0 ? Math.min(100, Math.max(0, (totals[key] / plan[key]) * 100)) : 0}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>

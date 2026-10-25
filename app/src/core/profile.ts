@@ -31,6 +31,8 @@ export function personalPlan(input: UserProfile) {
     status: 'review' as const,
     message,
     calories: null,
+    automaticCalories: null,
+    source: 'automatic' as 'automatic' | 'custom',
     lower: null,
     upper: null,
     protein: null,
@@ -57,7 +59,7 @@ export function personalPlan(input: UserProfile) {
     return blocked(
       'Расчётный расход ниже стандартной безопасной границы. Нужна индивидуальная консультация, а не автоматическая диета.',
     );
-  const pace =
+  const automaticPace =
     p.goal === 'lose'
       ? Math.min(
           p.pace,
@@ -69,11 +71,32 @@ export function personalPlan(input: UserProfile) {
         ? Math.min(0.5, Math.max(0.1, p.pace))
         : 0;
   const signed = p.goal === 'lose' ? -1 : p.goal === 'gain' ? 1 : 0;
-  const rawCalories = tdee + (signed * pace * 7700) / 7;
-  const calories = Math.max(
+  const rawCalories = tdee + (signed * automaticPace * 7700) / 7;
+  const automaticCalories = Math.max(
     floor,
     p.goal === 'lose' ? Math.ceil(rawCalories) : Math.round(rawCalories),
   );
+  const minCalories = Math.ceil(
+    Math.max(floor, tdee * 0.75, tdee - (Math.min(1, p.weight * 0.01) * 7700) / 7),
+  );
+  if (p.customCalories !== undefined && p.customCalories < minCalories)
+    return blocked(
+      `По вашим данным цель должна быть не ниже ${minCalories} ккал. Более низкую норму подбирают со специалистом.`,
+    );
+  const maxCalories = Math.floor(Math.min(5000, tdee + 550));
+  if (p.customCalories !== undefined && p.customCalories > maxCalories)
+    return blocked(
+      `По вашим данным цель должна быть не выше ${maxCalories} ккал. Более высокую норму подбирают со специалистом.`,
+    );
+  const calories = p.customCalories ?? automaticCalories;
+  const manual = p.customCalories !== undefined;
+  const pace = manual
+    ? p.goal === 'lose'
+      ? Math.max(0, ((tdee - calories) * 7) / 7700)
+      : p.goal === 'gain'
+        ? Math.max(0, ((calories - tdee) * 7) / 7700)
+        : 0
+    : automaticPace;
   const protein = Math.round(
     Math.min(p.weight * (p.goal === 'gain' ? 1.8 : 1.6), (calories * 0.3) / 4),
   );
@@ -84,21 +107,21 @@ export function personalPlan(input: UserProfile) {
     message:
       'Стартовая оценка по формуле Миффлина–Сан Жеора и активности. Это не медицинское назначение; корректируйте план по самочувствию и динамике со специалистом.',
     calories,
+    automaticCalories,
+    source: manual ? ('custom' as const) : ('automatic' as const),
     lower: Math.ceil(
-      Math.max(
-        floor,
-        calories - 100,
-        p.goal === 'lose' ? Math.max(tdee * 0.75, tdee - (p.weight * 0.01 * 7700) / 7) : floor,
-      ),
+      Math.max(floor, calories - 100, p.goal === 'lose' || manual ? minCalories : floor),
     ),
-    upper: Math.round(p.goal === 'lose' ? Math.min(tdee, calories + 100) : calories + 100),
+    upper: Math.round(
+      !manual && p.goal === 'lose' ? Math.min(tdee, calories + 100) : calories + 100,
+    ),
     protein,
     fat,
     carbs,
     water: Math.round(Math.min(3500, Math.max(1500, p.weight * 30)) / 50) * 50,
     pace,
     weeks: pace > 0 ? Math.ceil(Math.abs(p.targetWeight - p.weight) / pace) : null,
-    adjusted: p.goal !== 'maintain' && Math.abs(pace - p.pace) > 0.001,
+    adjusted: !manual && p.goal !== 'maintain' && Math.abs(pace - p.pace) > 0.001,
   };
 }
 export type PersonalPlan = ReturnType<typeof personalPlan>;

@@ -111,3 +111,62 @@ describe('Сохранённое согласие', () => {
     expect(loadProfile()).toBeNull();
   });
 });
+
+describe('Ручная цель калорий', () => {
+  it('сохраняет старые профили без нового поля', () => {
+    expect(ProfileSchema.parse(profile)).not.toHaveProperty('customCalories');
+    expect(personalPlan(profile).source).toBe('automatic');
+  });
+  it('пересчитывает БЖУ под пользовательскую калорийность', () => {
+    const plan = personalPlan({ ...profile, customCalories: 2000 });
+    expect(plan.status).toBe('ready');
+    expect(plan.calories).toBe(2000);
+    expect(plan.automaticCalories).toBe(2136);
+    expect(plan.source).toBe('custom');
+    if (plan.status === 'ready') {
+      expect(plan.protein).toBe(128);
+      expect(plan.fat).toBe(62);
+      expect(plan.carbs).toBe(233);
+      expect(
+        Math.abs(plan.protein * 4 + plan.fat * 9 + plan.carbs * 4 - plan.calories),
+      ).toBeLessThanOrEqual(10);
+    }
+  });
+  it('не обходит ограничения через ручной ввод или цель поддержания', () => {
+    for (const goal of ['lose', 'maintain', 'gain'] as const) {
+      expect(
+        personalPlan({
+          ...profile,
+          goal,
+          targetWeight: goal === 'lose' ? 70 : goal === 'gain' ? 85 : 80,
+          customCalories: 1500,
+        }).status,
+      ).toBe('review');
+    }
+    expect(personalPlan({ ...profile, customCalories: 3000 }).status).toBe('review');
+    expect(() => ProfileSchema.parse({ ...profile, pace: 8 })).toThrow();
+    for (const customCalories of [0, -500, 1199, 5001, NaN, Infinity, 1800.5]) {
+      expect(() => ProfileSchema.parse({ ...profile, customCalories })).toThrow();
+    }
+  });
+  it('не назначает ручную диету несовершеннолетним или при особых состояниях', () => {
+    expect(personalPlan({ ...profile, age: 17, customCalories: 2000 }).status).toBe('review');
+    expect(personalPlan({ ...profile, individualCare: true, customCalories: 2000 }).status).toBe(
+      'review',
+    );
+  });
+  it('считает срок из выбранных калорий, не обещает прежний темп', () => {
+    const slow = personalPlan({ ...profile, goal: 'lose', targetWeight: 70, customCalories: 2000 });
+    expect(slow.pace).toBeCloseTo(((2136 - 2000) * 7) / 7700);
+    expect(slow.weeks).toBe(81);
+    const noLoss = personalPlan({
+      ...profile,
+      goal: 'lose',
+      targetWeight: 70,
+      customCalories: 2400,
+    });
+    expect(noLoss.pace).toBe(0);
+    expect(noLoss.weeks).toBeNull();
+    expect(noLoss.lower! <= noLoss.upper!).toBe(true);
+  });
+});

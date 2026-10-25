@@ -11,6 +11,7 @@ export const ProfileSchema = z
     goal: z.enum(['lose', 'maintain', 'gain']),
     targetWeight: z.number().min(25).max(350),
     pace: z.number().min(0.1).max(1),
+    customCalories: z.number().int().min(1200).max(5000).optional(),
     individualCare: z.boolean(),
     updatedAt: z.string().datetime(),
   })
