@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 async function manual(page: Page, name = 'Контрольная запись') {
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
   await page.getByLabel('Название', { exact: true }).fill(name);
@@ -45,6 +46,7 @@ test('без сети доступны ручной дневник, вода и 
   await page.goto('/');
   await context.setOffline(true);
   await manual(page);
+  await page.getByRole('button', { name: 'Главная', exact: true }).click();
   await page.getByRole('button', { name: '+250', exact: true }).click();
   await expect(page.locator('.water .section-head > strong')).toHaveText('250 мл');
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
@@ -54,8 +56,9 @@ test('без сети доступны ручной дневник, вода и 
   await context.setOffline(false); // Browser shell needs HTTP, unlike assets bundled in APK.
   await page.route('**/v1/**', (route) => route.abort());
   await page.reload();
-  await page.getByRole('button', { name: 'Главная', exact: true }).click();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Главная', exact: true }).click();
   await expect(page.locator('.water .section-head > strong')).toHaveText('250 мл');
   expect(errors).toEqual([]);
 });
@@ -65,7 +68,7 @@ test('правка профиля сохраняет новую норму по�
   await page.goto('/');
   await manual(page);
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
-  await page.getByRole('button', { name: 'Изменить профиль и цель' }).click();
+  await page.getByRole('button', { name: 'Изменить данные профиля' }).click();
   await page.getByLabel('Имя', { exact: true }).fill('Проверка профиля');
   await page.getByLabel('Вес, кг', { exact: true }).fill('78.5');
   await expect(page.getByLabel('Вес, кг', { exact: true })).toHaveAttribute('inputmode', 'decimal');
@@ -75,6 +78,7 @@ test('правка профиля сохраняет новую норму по�
   await page.reload();
   await page.getByRole('button', { name: 'Главная', exact: true }).click();
   await expect(page.locator('.energy-copy')).toContainText('2118');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toHaveCount(1);
 });
 test('повреждённый новый JSON убирает старое preview и не меняет дневник', async ({ page }) => {
@@ -91,7 +95,7 @@ test('повреждённый новый JSON убирает старое previ
   });
   await expect(page.getByRole('status').filter({ hasText: 'Данные не изменены' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Подтвердить импорт' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Главная', exact: true }).click();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toHaveCount(1);
   await expect(page.locator('.meals li')).toContainText('Контрольная запись');
 });
@@ -101,7 +105,7 @@ test('отмена preview JSON не записывает ничего', async (
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles(jsonFile(backup(day)));
   await page.getByRole('button', { name: 'Отмена импорта' }).click();
-  await page.getByRole('button', { name: 'Главная', exact: true }).click();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toHaveCount(0);
 });
 test('JSON-экспорт восстанавливает еду, воду и вес в чистом хранилище', async ({
@@ -110,6 +114,7 @@ test('JSON-экспорт восстанавливает еду, воду и в�
 }) => {
   await page.goto('/');
   await manual(page);
+  await page.getByRole('button', { name: 'Главная', exact: true }).click();
   await page.getByRole('button', { name: '+200', exact: true }).click();
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
   await page.getByLabel('Вес сегодня, кг').fill('79.5');
@@ -144,12 +149,14 @@ test('JSON-экспорт восстанавливает еду, воду и в�
     await expect(
       other.getByRole('status').filter({ hasText: 'Записи восстановлены' }),
     ).toBeVisible();
-    await other.getByRole('button', { name: 'Главная', exact: true }).click();
+    await other.getByRole('button', { name: 'Дневник', exact: true }).click();
     await expect(other.locator('.meals li')).toHaveCount(1);
+    await other.getByRole('button', { name: 'Главная', exact: true }).click();
     await expect(other.locator('.water .section-head > strong')).toHaveText('200 мл');
     await other.getByRole('button', { name: 'Прогресс', exact: true }).click();
     await expect(other.locator('.weight-history')).toContainText('79.5 кг');
     await other.getByRole('button', { name: 'Профиль', exact: true }).click();
+    await other.getByText('Разрешения приложения', { exact: true }).click();
     await expect(other.getByLabel('Использовать ИИ', { exact: true })).not.toBeChecked();
   } finally {
     await fresh.close();
@@ -161,6 +168,7 @@ test('ошибка фото понятна; пустой или повреждё
     if (r.url().includes('/v1/analyze-meal')) analyses++;
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'По фото', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles({
@@ -182,6 +190,7 @@ test('ограничение трёх фото и удаление выбран�
 }) => {
   await page.goto('/');
   const png = await page.screenshot();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'По фото', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles(
@@ -205,6 +214,7 @@ test('высота как при открытой клавиатуре: диал
 }) => {
   await page.setViewportSize({ width: 360, height: 360 });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
   await expect(page.getByLabel('Название', { exact: true })).toBeFocused();
@@ -275,6 +285,7 @@ test('обновление базы v1 → v4 сохраняет старые р
   }, day);
   await page.unroute('**/*');
   await page.reload();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toContainText('Старая запись v1');
   await expect(page.locator('.calorie-orbit strong')).toHaveText('130');
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();

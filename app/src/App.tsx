@@ -184,7 +184,6 @@ export function App() {
       entries={entries}
       day={day}
       expanded={tab === 'diary'}
-      onAdd={() => setOpen(true)}
       onEdit={(entry) => {
         setEditing(entry);
         setOpen(true);
@@ -370,7 +369,7 @@ export function App() {
                   <p>{motivations[new Date(`${day}T12:00:00`).getDay()]}</p>
                 </section>
               )}
-              {mealList}
+              {tab === 'diary' && mealList}
             </>
           )}
           {tab === 'coach' && profile && (
@@ -397,21 +396,18 @@ export function App() {
               {error}
             </p>
           )}
-          <p className="disclaimer">
-            Оценки питания не заменяют консультацию врача.
-            <br />
-            КБЖУ по фото — оценка. Для точности проверьте массу и рецепт.
-          </p>
         </main>
-        <button
-          ref={addButton}
-          className="fab"
-          aria-label="Добавить еду"
-          onClick={() => setOpen(true)}
-        >
-          <Icon name="plus" size={25} />
-          <span>Добавить еду</span>
-        </button>
+        {tab === 'diary' && (
+          <button
+            ref={addButton}
+            className="fab"
+            aria-label="Добавить еду"
+            onClick={() => setOpen(true)}
+          >
+            <Icon name="plus" size={25} />
+            <span>Добавить еду</span>
+          </button>
+        )}
         <nav className="bottom-nav" aria-label="Основная навигация">
           {tabs.map((item) => (
             <button
@@ -434,9 +430,7 @@ export function App() {
           editing={editing}
           onClose={closeDialog}
           onSaved={(corrected) => {
-            setNotice(
-              corrected ? 'Калории уточнены по БЖУ и сохранены' : 'Запись сохранена на устройстве',
-            );
+            setNotice(corrected ? 'Калории уточнены по БЖУ' : '');
             closeDialog();
           }}
         />
@@ -448,7 +442,7 @@ export function App() {
           onClose={closeDialog}
           onManual={() => setManual(true)}
           onSaved={() => {
-            setNotice('Блюдо сохранено. КБЖУ рассчитаны на устройстве.');
+            setNotice('');
             closeDialog();
           }}
         />

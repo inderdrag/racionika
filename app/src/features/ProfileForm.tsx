@@ -13,7 +13,7 @@ export function ProfileForm({
 }) {
   const [goal, setGoal] = useState(initial?.goal ?? 'maintain');
   const [preview, setPreview] = useState<UserProfile>();
-  const [consent, setConsent] = useState(hasAiConsent());
+  const [consent, setConsent] = useState(initial ? hasAiConsent() : false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<UserProfile | undefined>(initial);
   const plan = preview ? personalPlan(preview) : undefined;
@@ -46,6 +46,10 @@ export function ProfileForm({
   }
   function finish() {
     if (!preview) return;
+    if (!initial && !consent) {
+      setError('Подтвердите согласие на использование ИИ.');
+      return;
+    }
     try {
       saveProfile(preview);
       saveAiConsent(consent);
@@ -186,10 +190,7 @@ export function ProfileForm({
                 расстройство пищевого поведения.
               </span>
             </label>
-            <p className="subtle">
-              Профиль и дневник хранятся на телефоне. Это не облачный аккаунт. Норму рассчитывает
-              код, а не догадка ИИ.
-            </p>
+            <p className="subtle">Профиль и дневник хранятся на телефоне.</p>
             <button className="primary" type="submit">
               Рассчитать мой план
             </button>
@@ -208,13 +209,8 @@ export function ProfileForm({
                 <p>
                   Белки {plan.protein} г · Жиры {plan.fat} г · Углеводы {plan.carbs} г
                 </p>
-                <p>
-                  Вода: {plan.water} мл — стартовый ориентир, с учётом жажды и индивидуальных
-                  рекомендаций.
-                </p>
-                {plan.weeks !== null && (
-                  <p>Расчётный срок: около {plan.weeks} нед., не обещание результата.</p>
-                )}
+                <p>Вода: {plan.water} мл — ориентир.</p>
+                {plan.weeks !== null && <p>Расчётный срок: около {plan.weeks} нед.</p>}
                 {plan.adjusted && (
                   <p>Темп ограничен безопасными границами: около {plan.pace?.toFixed(2)} кг/нед.</p>
                 )}
@@ -223,28 +219,31 @@ export function ProfileForm({
               <p className="notice">{plan?.message}</p>
             )}
             <p className="subtle">
-              {plan?.status === 'ready'
-                ? plan.message
-                : 'Можно вести дневник и включить напоминания без автоматической диеты.'}
+              Норма рассчитывается автоматически по данным профиля. Это ориентир, не медицинское
+              назначение.
             </p>
-            <label className="consent onboarding-consent">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-              />
-              <span>
-                Включить ИИ. Разрешаю отправлять фото, описания еды и сообщения через сервер
-                приложения провайдеру AnyModel. Для наставника также передаются последние 10
-                сообщений, сводка выбранного дня, профиль и цель. Сервер приложения их не сохраняет;
-                обработка AnyModel — по его политике. Согласие сохраняется и отзывается в Профиле.
-              </span>
-            </label>
-            <p className="subtle">
-              Без согласия ИИ выключен, локальный дневник работает. Напоминания включаются отдельно
-              в Профиле.
-            </p>
-            <button className="primary" onClick={finish}>
+            {!initial && (
+              <>
+                <label className="consent onboarding-consent">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => {
+                      setConsent(e.target.checked);
+                      setError('');
+                    }}
+                  />
+                  <span>Включить ИИ. Разрешаю передачу данных в AnyModel для работы ИИ.</span>
+                </label>
+                <p className="subtle consent-details">
+                  Через сервер передаются фото, описания еды и сообщения, а для чата — последние 10
+                  сообщений, сводка дня, профиль и цель. Сервер приложения их не сохраняет;
+                  обработка AnyModel — по его политике. Отозвать согласие можно в Профиле →
+                  Разрешения приложения.
+                </p>
+              </>
+            )}
+            <button className="primary" onClick={finish} disabled={!initial && !consent}>
               {initial ? 'Сохранить профиль' : 'Начать'}
             </button>
             <button className="text-button" onClick={() => setPreview(undefined)}>

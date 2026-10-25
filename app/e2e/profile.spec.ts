@@ -13,15 +13,22 @@ async function register(page: import('@playwright/test').Page, consent = true) {
   await page.getByRole('button', { name: 'Рассчитать мой план' }).click();
   await expect(page.getByRole('heading', { name: 'Ваш личный план' })).toBeVisible();
   await expect(page.locator('.plan-preview > strong')).toContainText('1602');
-  if (consent) await page.getByRole('checkbox', { name: /Включить ИИ/ }).check();
+  await expect(page.getByRole('button', { name: 'Начать', exact: true })).toBeDisabled();
+  expect(await page.evaluate(() => localStorage.getItem('racionika.profile'))).toBeNull();
+  await page.getByRole('checkbox', { name: /Включить ИИ/ }).check();
   await page.getByRole('button', { name: 'Начать', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Хороший день для себя' })).toBeVisible();
+  if (!consent) {
+    await page.evaluate(() => localStorage.removeItem('racionika.aiConsent'));
+    await page.reload();
+  }
 }
 test('первый вход: профиль, безопасная норма и одно согласие без кодов', async ({ page }) => {
   await register(page);
   await expect(page.locator('.energy-copy')).toContainText('1602 ккал');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Хороший день для себя' })).toBeVisible();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await expect(
     page.getByRole('dialog').locator('input[type=checkbox], input[type=password]'),
@@ -53,6 +60,7 @@ test('локальный дневник без согласия, отзыв в �
   page.on('request', (req) => {
     if (req.url().includes('/v1/analyze-text')) requests++;
   });
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Рис');
   await page
@@ -63,11 +71,13 @@ test('локальный дневник без согласия, отзыв в �
   expect(requests).toBe(0);
   await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
+  await page.getByText('Разрешения приложения', { exact: true }).click();
   await page.getByLabel('Использовать ИИ', { exact: true }).check();
   await expect(page.getByLabel('Использовать ИИ', { exact: true })).toBeChecked();
   await page.getByLabel('Использовать ИИ', { exact: true }).uncheck();
   await page.reload();
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
+  await page.getByText('Разрешения приложения', { exact: true }).click();
   await expect(page.getByLabel('Использовать ИИ', { exact: true })).not.toBeChecked();
 });
 test('настройки сна и интервала показывают только дневное расписание', async ({ page }) => {
@@ -111,7 +121,7 @@ test('импорт старого JSON подтверждается и не со
     await expect(
       page.getByRole('status').filter({ hasText: 'Записи восстановлены' }),
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Главная', exact: true }).click();
+    await page.getByRole('button', { name: 'Дневник', exact: true }).click();
     await expect(page.locator('.meals li')).toHaveCount(1);
     await expect(page.locator('.calorie-orbit strong')).toHaveText('130');
   }
@@ -135,7 +145,7 @@ test('цель калорий заметна в Профиле, пересчит
   await expect(
     page.getByText('Учитывать масло и добавки в новых блюдах', { exact: true }),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: 'Настроить цель калорий' }).click();
+  await page.getByRole('button', { name: 'Изменить данные профиля' }).click();
   await page.getByRole('combobox', { name: 'Моя цель', exact: true }).selectOption('maintain');
   await page.getByRole('button', { name: 'Рассчитать мой план' }).click();
   await expect(page.locator('.plan-preview > strong')).toContainText('2136');

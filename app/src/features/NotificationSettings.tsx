@@ -32,7 +32,7 @@ export function NotificationSettings() {
       localStorage.setItem(REMINDER_KEY, JSON.stringify(settings));
       setNotice(
         items.length
-          ? `Сохранено. Напоминания повторяются каждый день вне часов сна.${result.exact ? '' : ' Android может задерживать доставку; для точного времени разрешите будильники.'}`
+          ? `Сохранено.${result.exact ? '' : ' Android может задерживать доставку; для точного времени разрешите будильники.'}`
           : 'Все напоминания отключены.',
       );
     } catch (error) {
@@ -44,10 +44,7 @@ export function NotificationSettings() {
   return (
     <section className="card notification-settings">
       <h2>Напоминания и поддержка</h2>
-      <p className="subtle">
-        Системные уведомления на телефоне — приложение и интернет не должны быть открыты. Интервалы
-        отсчитываются заново от пробуждения каждый день.
-      </p>
+      <p className="subtle">Без уведомлений во время сна.</p>
       <form onSubmit={(event) => void save(event)}>
         <div className="form-grid">
           <label className="field">
@@ -145,11 +142,6 @@ export function NotificationSettings() {
             .
           </p>
         )}
-        <p className="subtle">
-          Мотивация — заранее подготовленные поддерживающие фразы, не платные ИИ-запросы в фоне. На
-          время сна уведомления не планируются. Для строгой тишины при системных задержках
-          используйте также режим «Не беспокоить» Android.
-        </p>
         <button className="primary" disabled={busy}>
           {busy ? 'Настраиваем…' : 'Сохранить напоминания'}
         </button>
@@ -163,7 +155,7 @@ export function NotificationSettings() {
               .catch(() => setNotice('Эта настройка доступна в Android-приложении.'))
           }
         >
-          Разрешить точное время в Android
+          Точное время уведомлений
         </button>
       </form>
       {notice && (

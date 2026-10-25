@@ -1,6 +1,7 @@
 import { expect, test } from './fixtures';
 test('ручной ввод как запасной путь, вода и перезагрузка', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
   await page.getByLabel('Название', { exact: true }).fill('Овсяная каша');
@@ -11,6 +12,7 @@ test('ручной ввод как запасной путь, вода и пер
   await page.getByLabel('Углеводы, г').fill('17.5');
   await page.getByRole('button', { name: 'Сохранить запись' }).click();
   await expect(page.locator('.calorie-orbit strong')).toHaveText('150');
+  await page.getByRole('button', { name: 'Главная', exact: true }).click();
   await page.getByRole('button', { name: '+200', exact: true }).click();
   await expect(page.locator('.water .section-head>strong')).toHaveText('200 мл');
   await page.reload();
@@ -23,6 +25,7 @@ test('описание → состав → локальный пересчёт 
     if (req.url().includes('/v1/analyze-text')) requests++;
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await expect(page.getByText('ДЕМО: фиксированный пример, без распознавания')).toBeVisible();
   await page.getByLabel('Что вы съели?').fill('Курица с рисом');
@@ -45,6 +48,7 @@ test('описание → состав → локальный пересчёт 
     configRequests++;
     return route.abort();
   });
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: /^Демо: курица с рисом/ }).click();
   await expect(page.getByLabel('Масса ингредиента 1', { exact: true })).toHaveValue('300');
   await expect(page.getByRole('dialog').getByRole('alert')).toHaveCount(0);
@@ -53,6 +57,7 @@ test('описание → состав → локальный пересчёт 
 });
 test('фото: сжатие JPEG, согласие, пометка демо', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'По фото', exact: true }).click();
   const png = await page.screenshot();
@@ -86,6 +91,7 @@ test('нет отправки без согласия и нет переполн
   await page.goto('/');
   await page.evaluate(() => localStorage.removeItem('racionika.aiConsent'));
   await page.reload();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Два яйца');
   await page
@@ -107,6 +113,7 @@ test('повтор того же описания использует лока�
   });
   await page.goto('/');
   for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'Дневник', exact: true }).click();
     await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
     await page.getByLabel('Что вы съели?').fill('Курица с рисом');
     await page
@@ -125,6 +132,7 @@ test('в результате категория, состав и калории
     if (req.url().includes('/v1/analyze-text')) requests++;
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Курица с рисом');
   await page
@@ -173,6 +181,7 @@ for (const kind of ['text', 'photo'] as const) {
       },
     );
     await page.goto('/');
+    await page.getByRole('button', { name: 'Дневник', exact: true }).click();
     await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
     if (kind === 'photo') {
       await page.getByRole('button', { name: 'По фото', exact: true }).click();
@@ -219,6 +228,7 @@ test('серверная ошибка квоты понятна и ручной 
     }),
   );
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Два яйца');
   await page
@@ -243,6 +253,7 @@ test('ответ «не еда» не сохраняется в дневник',
     await route.fulfill({ response, json: body });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Стул');
   await page

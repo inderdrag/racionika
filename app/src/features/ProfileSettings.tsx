@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { APP_VERSION, type UserProfile } from '@racionika/shared';
 import { db, localDay } from '../core/db';
 import { getPlatform } from '../core/platform';
-import { getUsage, resetAiSession } from '../core/ai/client';
+import { resetAiSession } from '../core/ai/client';
 import { CONSENT_KEY, hasAiConsent, personalPlan, saveAiConsent } from '../core/profile';
 import { exportBackup, parseBackup, mergeBackup, type Backup } from '../core/backup';
 import { NotificationSettings } from './NotificationSettings';
@@ -47,8 +47,21 @@ export function ProfileSettings({
           {profile.goal !== 'maintain' ? ` · цель ${profile.targetWeight} кг` : ''}
         </p>
 
+        <div className="calorie-goal-card">
+          <h3>Цель калорий на день</h3>
+          {plan.status === 'ready' ? (
+            <>
+              <strong className="daily-calorie-goal">
+                {plan.calories} <small>ккал</small>
+              </strong>
+              <p className="subtle">Рассчитано автоматически по вашим данным.</p>
+            </>
+          ) : (
+            <p className="subtle">{plan.message}</p>
+          )}
+        </div>
         <button className="secondary" onClick={onEdit}>
-          Изменить профиль и цель
+          Изменить данные профиля
         </button>
         <label className="field">
           Тема
@@ -68,76 +81,10 @@ export function ProfileSettings({
           </select>
         </label>
       </section>
-      <section className="card profile-card calorie-goal-card">
-        <h2>Цель калорий на день</h2>
-        {plan.status === 'ready' ? (
-          <>
-            <strong className="daily-calorie-goal">
-              {plan.calories} <small>ккал в день</small>
-            </strong>
-            <p className="subtle">
-              {profile.goal === 'lose'
-                ? 'Для снижения веса'
-                : profile.goal === 'gain'
-                  ? 'Для набора веса'
-                  : 'Для поддержания веса'}
-              . Рассчитано по возрасту, полу, росту, весу и активности. Это стартовый ориентир, не
-              медицинское назначение.
-            </p>
-          </>
-        ) : (
-          <p className="subtle">{plan.message}</p>
-        )}
-        <button className="secondary" onClick={onEdit}>
-          Настроить цель калорий
-        </button>
-      </section>
       <NotificationSettings />
       <section className="card profile-card">
-        <h2>ИИ и приватность</h2>
-        <label className="consent">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => {
-              const value = e.target.checked;
-              saveAiConsent(value);
-              setConsent(value);
-              if (!value) void db.aiCache.clear();
-            }}
-          />
-          <span>Использовать ИИ</span>
-        </label>
-        <p className="subtle">
-          Одно согласие действует для фото, описаний и чата. Наставнику доступны последние 10
-          сообщений, сводка дня, профиль и цель. Данные отправляются через сервер провайдеру
-          AnyModel; сервер приложения их не сохраняет. Отзыв отключает новые запросы и очищает кеш
-          на устройстве, но не удаляет уже обработанные провайдером данные.
-        </p>
-        <button
-          className="secondary"
-          disabled={busy}
-          onClick={() =>
-            void safe(async () => {
-              const usage = await getUsage();
-              setNotice(
-                `Сегодня: разборы ${usage.analyses}/${usage.analysis_limit}, чат ${usage.chat}/${usage.chat_limit}.`,
-              );
-            })
-          }
-        >
-          Использование ИИ
-        </button>
-        <p className="subtle">
-          Масло, соль, сахар и соус автоматически не добавляются. Учитываются только продукты в
-          составе блюда.
-        </p>
-      </section>
-      <section className="card profile-card">
         <h2>Данные на телефоне</h2>
-        <p className="subtle">
-          Сохраняйте резервную копию перед переустановкой. Облачной синхронизации нет.
-        </p>
+        <p className="subtle">Резервная копия дневника. Данные хранятся на телефоне.</p>
         <button
           className="secondary"
           disabled={busy}
@@ -146,7 +93,7 @@ export function ProfileSettings({
               await (
                 await getPlatform()
               ).share.json(`racionika-${localDay()}.json`, await exportBackup());
-              setNotice('Экспорт подготовлен');
+              setNotice('');
             })
           }
         >
@@ -254,10 +201,28 @@ export function ProfileSettings({
         >
           Удалить локальные данные
         </button>
-        <p className="subtle">
-          Рационика {APP_VERSION}. Не заменяет врача. Данные профиля хранятся локально.
-        </p>
+        <p className="subtle">Версия {APP_VERSION}</p>
       </section>
+      <details className="card app-permissions">
+        <summary>Разрешения приложения</summary>
+        <label className="consent">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => {
+              const value = e.target.checked;
+              saveAiConsent(value);
+              setConsent(value);
+              if (!value) void db.aiCache.clear();
+            }}
+          />
+          <span>Использовать ИИ</span>
+        </label>
+        <p className="subtle">
+          Фото, описания еды, сообщения, профиль и сводка дня передаются через сервер в AnyModel.
+          Чат использует последние 10 сообщений. Отключение останавливает новые запросы.
+        </p>
+      </details>
       {notice && (
         <p className="notice" role="status">
           {notice}

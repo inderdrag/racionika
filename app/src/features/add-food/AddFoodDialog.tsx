@@ -353,7 +353,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
           ) : (
             <>
               <label className="field result-category">
-                Куда добавить блюдо?
+                Куда добавить
                 <select
                   aria-label="Приём пищи для блюда"
                   value={mealType}
@@ -362,7 +362,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
                     setError('');
                   }}
                 >
-                  <option value="">Выберите приём пищи</option>
+                  <option value="">Выберите категорию</option>
                   {mealTypes.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}

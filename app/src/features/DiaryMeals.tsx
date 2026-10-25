@@ -16,16 +16,14 @@ interface Props {
   entries: FoodEntry[];
   day: string;
   expanded: boolean;
-  onAdd: () => void;
   onEdit: (entry: FoodEntry) => void;
 }
 type Editor = { entry: FoodEntry; mode: 'details' | 'copy' | 'reuse' };
-export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
+export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
   const [favorites, setFavorites] = useState<FavoriteDish[]>([]);
   const [recent, setRecent] = useState<FoodEntry[]>([]);
   const [library, setLibrary] = useState<'favorites' | 'recent'>('favorites');
   const [editor, setEditor] = useState<Editor>();
-  const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const libraryButton = useRef<HTMLButtonElement>(null);
@@ -77,7 +75,6 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
         );
         if (existing.length) {
           await db.favoriteDishes.bulkDelete(existing.map((item) => item.id));
-          setNotice('Блюдо убрано из избранного. Записи дневника сохранены.');
         } else {
           if ((await db.favoriteDishes.count()) >= 10000)
             throw new Error('В избранном уже 10 000 блюд. Удалите ненужные.');
@@ -86,7 +83,6 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
             entry: structuredClone(entry),
             createdAt: new Date().toISOString(),
           });
-          setNotice('Блюдо добавлено в избранное.');
         }
       });
     });
@@ -121,7 +117,6 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
             onClick={() =>
               void safe(async () => {
                 await db.foodEntries.delete(entry.id);
-                setNotice('Запись удалена. Избранное не изменено.');
               })
             }
           >
@@ -173,14 +168,7 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
               <Icon name="leaf" size={32} />
             </div>
             <h3>Начнём с одного блюда</h3>
-            <p>
-              Сфотографируйте или опишите еду.
-              <br />
-              Ингредиенты и КБЖУ определит ИИ.
-            </p>
-            <button className="text-button" onClick={onAdd}>
-              Определить КБЖУ <Icon name="arrow" size={18} />
-            </button>
+            <p>Фото или описание — КБЖУ посчитает ИИ.</p>
           </div>
         ) : expanded ? (
           groups.map((group) => {
@@ -210,12 +198,6 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
         ) : (
           <ul className="meals">{entries.map(row)}</ul>
         )}
-        {entries.length > 0 && (
-          <p className="subtle diary-help">
-            Нажмите блюдо, чтобы изменить состав или порцию. Категория, время и заметка — в
-            «Действиях».
-          </p>
-        )}
       </section>
       {expanded && (
         <section className="card dish-library">
@@ -237,18 +219,9 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
               Недавние
             </button>
           </div>
-          {dishes.length > 0 && (
-            <p className="subtle">
-              {library === 'favorites'
-                ? 'Сохранённые блюда остаются здесь, даже если удалить запись дня.'
-                : 'Последние 20 разных блюд из 200 последних записей. Повторное добавление не вызывает ИИ.'}
-            </p>
-          )}
           {!dishes.length ? (
             <p className="subtle">
-              {library === 'favorites'
-                ? 'Добавьте блюдо в избранное через «Действия» в дневнике.'
-                : 'Здесь появятся недавно сохранённые блюда.'}
+              {library === 'favorites' ? 'Пока нет избранных блюд.' : 'Пока нет недавних блюд.'}
             </p>
           ) : (
             <ul className="library-list">
@@ -286,11 +259,6 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
           )}
         </section>
       )}
-      {notice && (
-        <p className="notice" role="status">
-          {notice}
-        </p>
-      )}
       {error && (
         <p className="error" role="alert">
           {error}
@@ -302,8 +270,7 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
           editor={editor}
           day={day}
           onClose={closeEditor}
-          onSaved={(message) => {
-            setNotice(message);
+          onSaved={() => {
             closeEditor();
           }}
         />
@@ -392,8 +359,7 @@ function EntryDetails({
         <h3>{entry.name}</h3>
         <p className="subtle">
           {Math.round(entry.grams)} г · {Math.round(entryTotals(entry).kcal)} ккал
-          {entry.source === 'demo' ? ' · ДЕМО' : ''}. Состав и порция сохраняются; изменить их можно
-          нажатием блюда в дневнике.
+          {entry.source === 'demo' ? ' · ДЕМО' : ''}
         </p>
         <fieldset disabled={busy} className="entry-details-fields">
           {mode !== 'details' && (

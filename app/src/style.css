@@ -1222,7 +1222,7 @@ select {
   margin: 12px 0 16px;
 }
 .result-category {
-  margin: 20px 0;
+  margin: 12px 0 24px;
 }
 .result-category select {
   display: block;
@@ -1244,4 +1244,23 @@ select {
 }
 .daily-calorie-goal small {
   font-size: 16px;
+}
+
+/* Compact, consistent controls for recognition and profile. */
+.profile-card .calorie-goal-card {
+  margin: 20px 0;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--surface-soft);
+}
+.app-permissions summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.app-permissions .consent {
+  margin-top: 20px;
+}
+.consent-details {
+  font-size: 13px;
+  line-height: 1.55;
 }

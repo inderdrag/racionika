@@ -28,7 +28,7 @@ export function Progress({ profile }: { profile: UserProfile }) {
         kg: value,
         createdAt: new Date().toISOString(),
       });
-      setNotice('Вес сохранён. Норма калорий не меняется без вашего подтверждения.');
+      setNotice('');
     } catch {
       setNotice('Не удалось сохранить вес.');
     }

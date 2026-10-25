@@ -11,6 +11,7 @@ test('настольная рамка без переполнения', async ({
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });

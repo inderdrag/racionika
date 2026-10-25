@@ -19,6 +19,7 @@ test.beforeEach(async ({ page }) => {
 });
 async function meal(page: Page) {
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
   await page.getByLabel('Название', { exact: true }).fill('Овсянка');
@@ -214,7 +215,9 @@ test('миграция v3 → v4 сохраняет все старые табл
   await page.unroute('**/*');
   await page.reload();
   await page.getByLabel('Дата дневника').fill('2026-10-24');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toContainText('Старая еда');
+  await page.getByRole('button', { name: 'Главная', exact: true }).click();
   await expect(page.locator('.water .section-head > strong')).toHaveText('200 мл');
   const counts = await page.evaluate(
     () =>
@@ -310,6 +313,7 @@ test('блюдо ИИ сохраняет детали при правке сос
   );
 
   await page.goto('/');
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByLabel('Что вы съели?').fill('Курица с рисом');
   await page
