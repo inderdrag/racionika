@@ -1071,3 +1071,153 @@ textarea,
 select {
   scroll-margin-block: 24px;
 }
+
+/* Extended diary: quiet secondary actions, readable on narrow Android screens. */
+.meals > .diary-entry {
+  display: block;
+}
+.diary-entry-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.diary-entry-main .meal-edit {
+  flex: 1;
+  min-width: 0;
+}
+.diary-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 12px 0 4px;
+}
+.entry-actions {
+  margin-top: 8px;
+}
+.entry-actions summary {
+  color: var(--accent);
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+.entry-actions summary::before {
+  content: '+';
+  margin-right: 8px;
+}
+.entry-actions[open] summary::before {
+  content: '−';
+}
+.entry-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.entry-actions button {
+  min-height: 44px;
+  text-align: left;
+}
+.meal-group {
+  margin-top: 24px;
+}
+.meal-group h3 {
+  margin: 0;
+}
+.meal-group .section-head {
+  margin-bottom: 8px;
+}
+.group-empty {
+  margin: 0;
+  font-size: 14px;
+}
+.diary-help {
+  margin: 16px 0 0;
+  font-size: 14px;
+}
+.library-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+.library-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.library-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+.library-list li > div {
+  flex: 1 1 150px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.library-list small {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+.library-list button {
+  min-height: 44px;
+}
+.entry-details-fields {
+  border: 0;
+  padding: 0;
+  margin: 20px 0;
+  min-width: 0;
+}
+.entry-details-fields label {
+  margin-bottom: 16px;
+}
+.entry-details-dialog h3 {
+  overflow-wrap: anywhere;
+}
+.library-list .secondary {
+  width: auto;
+}
+.library-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.library-tabs button {
+  min-width: 0;
+  padding-inline: 8px;
+}
+.entry-details-fields select,
+.entry-details-fields textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.entry-details-fields select {
+  min-height: 48px;
+}
+.entry-details-fields textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+.entry-details-fields select:focus-visible,
+.entry-details-fields textarea:focus-visible,
+.entry-actions summary:focus-visible {
+  outline: 3px solid var(--water);
+  outline-offset: 3px;
+}
+.dish-library > p {
+  margin: 12px 0 16px;
+}

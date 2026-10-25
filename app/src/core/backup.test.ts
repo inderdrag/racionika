@@ -53,3 +53,34 @@ it('не импортирует секреты и согласие из неиз
 });
 it('ограничивает размер до парсинга', () =>
   expect(() => parseBackup(' '.repeat(20 * 1024 * 1024 + 1))).toThrow('20 МБ'));
+it('формат v4 сохраняет детали и избранное, старому JSON добавляет пустой список', () => {
+  const entry = {
+    ...base.foodEntries[0],
+    mealType: 'breakfast',
+    eatenTime: '08:15',
+    note: 'Заметка',
+  };
+  const result = parseBackup(
+    JSON.stringify({
+      ...base,
+      schemaVersion: 4,
+      foodEntries: [entry],
+      favoriteDishes: [{ id: 'fav', entry, createdAt: entry.createdAt }],
+    }),
+  );
+  expect(result.foodEntries[0]).toMatchObject({
+    mealType: 'breakfast',
+    eatenTime: '08:15',
+    note: 'Заметка',
+  });
+  expect(result.favoriteDishes[0].entry).toMatchObject(entry);
+  expect(parseBackup(JSON.stringify(base)).favoriteDishes).toEqual([]);
+});
+it('не импортирует неверные детали приёма пищи', () => {
+  for (const details of [{ eatenTime: '24:00' }, { mealType: 'wrong' }, { note: 'a'.repeat(1001) }])
+    expect(() =>
+      parseBackup(
+        JSON.stringify({ ...base, foodEntries: [{ ...base.foodEntries[0], ...details }] }),
+      ),
+    ).toThrow();
+});

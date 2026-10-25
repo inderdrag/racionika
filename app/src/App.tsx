@@ -1,3 +1,5 @@
+import { DiaryMeals } from './features/DiaryMeals';
+import { mealMetadata } from './core/diary';
 import { loadProfile, personalPlan } from './core/profile';
 import { loadReminders, reminderPlan, motivations } from './core/notifications/plan';
 import { ProfileForm } from './features/ProfileForm';
@@ -35,6 +37,11 @@ export function App() {
     backHandler.current = () => {
       if (open) {
         closeDialog();
+        return true;
+      }
+      const childDialog = document.querySelector<HTMLDialogElement>('dialog[open]');
+      if (childDialog) {
+        childDialog.dispatchEvent(new Event('cancel', { cancelable: true }));
         return true;
       }
       if (editingProfile) {
@@ -173,68 +180,16 @@ export function App() {
     weekday: 'long',
   });
   const mealList = (
-    <section className="card">
-      <div className="section-head">
-        <h2>Приёмы пищи</h2>
-        <span className="subtle">Записей: {entries.length}</span>
-      </div>
-      {entries.length === 0 ? (
-        <div className="empty">
-          <div className="empty-icon">
-            <Icon name="leaf" size={32} />
-          </div>
-          <h3>Начнём с одного блюда</h3>
-          <p>
-            Сфотографируйте или опишите еду.
-            <br />
-            Ингредиенты и КБЖУ определит ИИ.
-          </p>
-          <button className="text-button" onClick={() => setOpen(true)}>
-            Определить КБЖУ <Icon name="arrow" size={18} />
-          </button>
-        </div>
-      ) : (
-        <ul className="meals">
-          {entries.map((entry) => (
-            <li key={entry.id}>
-              <button
-                className="meal-edit"
-                onClick={() => {
-                  setEditing(entry);
-                  setOpen(true);
-                }}
-              >
-                <span className="meal-avatar">
-                  <Icon name="leaf" />
-                </span>
-                <span>
-                  <strong>{entry.name}</strong>
-                  <small>
-                    {Math.round(entry.grams)} г ·{' '}
-                    {entry.source === 'demo'
-                      ? 'ДЕМО'
-                      : entry.analysis
-                        ? 'оценка ИИ'
-                        : 'ручной ввод'}
-                  </small>
-                </span>
-                <b>
-                  {Math.round(entryTotals(entry).kcal)}
-                  <small>ккал</small>
-                </b>
-              </button>
-              <button
-                className="delete"
-                aria-label={`Удалить ${entry.name}`}
-                onClick={() => void safely(() => db.foodEntries.delete(entry.id))}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <DiaryMeals
+      entries={entries}
+      day={day}
+      expanded={tab === 'diary'}
+      onAdd={() => setOpen(true)}
+      onEdit={(entry) => {
+        setEditing(entry);
+        setOpen(true);
+      }}
+    />
   );
   if (!profile || editingProfile)
     return (
@@ -537,6 +492,7 @@ function FoodDialog({
       if (grams === 0) throw new Error('grams');
       setBusy(true);
       await db.foodEntries.put({
+        ...mealMetadata(editing),
         id: editing?.id ?? crypto.randomUUID(),
         day,
         name,

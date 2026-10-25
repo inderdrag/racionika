@@ -23,6 +23,12 @@ const food = z.object({
   additionsLevel: z.number().min(0).max(1.5).optional(),
   source: z.enum(['ai', 'demo', 'manual', 'label']).optional(),
   baseGrams: z.number().finite().min(0).max(150000).optional(),
+  mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).optional(),
+  eatenTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+  note: z.string().max(1000).optional(),
 });
 const water = z.object({ id, day, ml: z.number().int().min(1).max(10000), createdAt: timestamp });
 const chat = z.object({
@@ -34,12 +40,16 @@ const chat = z.object({
 });
 const weight = z.object({ id, day, kg: z.number().min(25).max(350), createdAt: timestamp });
 export const BackupSchema = z.object({
-  schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   exportedAt: timestamp.optional(),
   foodEntries: z.array(food).max(50000),
   waterLogs: z.array(water).max(50000),
   chatMessages: z.array(chat).max(50000).default([]),
   weightLogs: z.array(weight).max(50000).default([]),
+  favoriteDishes: z
+    .array(z.object({ id, entry: food, createdAt: timestamp }))
+    .max(10000)
+    .default([]),
   profile: ProfileSchema.nullable().optional(),
 });
 export type Backup = z.infer<typeof BackupSchema>;
@@ -49,25 +59,27 @@ export function parseBackup(text: string) {
 }
 export async function exportBackup() {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     exportedAt: new Date().toISOString(),
     profile: loadProfile(),
     foodEntries: await db.foodEntries.toArray(),
     waterLogs: await db.waterLogs.toArray(),
     chatMessages: await db.chatMessages.toArray(),
     weightLogs: await db.weightLogs.toArray(),
+    favoriteDishes: await db.favoriteDishes.toArray(),
   };
 }
 export async function mergeBackup(input: Backup) {
   const backup = BackupSchema.parse(input);
   await db.transaction(
     'rw',
-    [db.foodEntries, db.waterLogs, db.chatMessages, db.weightLogs],
+    [db.foodEntries, db.waterLogs, db.chatMessages, db.weightLogs, db.favoriteDishes],
     async () => {
       await db.foodEntries.bulkPut(backup.foodEntries);
       await db.waterLogs.bulkPut(backup.waterLogs);
       await db.chatMessages.bulkPut(backup.chatMessages);
       await db.weightLogs.bulkPut(backup.weightLogs);
+      await db.favoriteDishes.bulkPut(backup.favoriteDishes);
     },
   );
 }

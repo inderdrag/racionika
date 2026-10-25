@@ -1,5 +1,11 @@
 import Dexie, { type Table } from 'dexie';
 import type { Nutrients, MealAnalysis, AnalysisResponse } from '@racionika/shared';
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export interface FavoriteDish {
+  id: string;
+  entry: FoodEntry;
+  createdAt: string;
+}
 export interface FoodEntry {
   id: string;
   day: string;
@@ -11,6 +17,9 @@ export interface FoodEntry {
   additionsLevel?: number;
   source?: 'ai' | 'demo' | 'manual' | 'label';
   baseGrams?: number;
+  mealType?: MealType;
+  eatenTime?: string;
+  note?: string;
 }
 
 export interface WeightLog {
@@ -40,6 +49,7 @@ export interface ChatMessage {
 }
 export class DiaryDatabase extends Dexie {
   foodEntries!: Table<FoodEntry, string>;
+  favoriteDishes!: Table<FavoriteDish, string>;
   weightLogs!: Table<WeightLog, string>;
   waterLogs!: Table<WaterLog, string>;
   aiCache!: Table<AiCache, string>;
@@ -59,6 +69,15 @@ export class DiaryDatabase extends Dexie {
       aiCache: 'hash, createdAt',
       chatMessages: 'id, createdAt',
       weightLogs: 'id, day, createdAt',
+    });
+    // Optional fields preserve legacy records without inventing meal times/categories.
+    this.version(4).stores({
+      foodEntries: 'id, day, createdAt',
+      waterLogs: 'id, day, createdAt',
+      aiCache: 'hash, createdAt',
+      chatMessages: 'id, createdAt',
+      weightLogs: 'id, day, createdAt',
+      favoriteDishes: 'id, createdAt',
     });
   }
 }

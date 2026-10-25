@@ -84,13 +84,11 @@ test('повреждённый новый JSON убирает старое previ
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles(jsonFile(backup(day)));
   await expect(page.getByRole('button', { name: 'Подтвердить импорт' })).toBeVisible();
-  await page
-    .locator('input[type=file]')
-    .setInputFiles({
-      name: 'broken.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from('{bad'),
-    });
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'broken.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{bad'),
+  });
   await expect(page.getByRole('status').filter({ hasText: 'Данные не изменены' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Подтвердить импорт' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Главная', exact: true }).click();
@@ -137,13 +135,11 @@ test('JSON-экспорт восстанавливает еду, воду и в�
     const other = await fresh.newPage();
     await other.goto(page.url());
     await other.getByRole('button', { name: 'Профиль', exact: true }).click();
-    await other
-      .locator('input[type=file]')
-      .setInputFiles({
-        name: file.suggestedFilename(),
-        mimeType: 'application/json',
-        buffer: bytes,
-      });
+    await other.locator('input[type=file]').setInputFiles({
+      name: file.suggestedFilename(),
+      mimeType: 'application/json',
+      buffer: bytes,
+    });
     await other.getByRole('button', { name: 'Подтвердить импорт' }).click();
     await expect(
       other.getByRole('status').filter({ hasText: 'Записи восстановлены' }),
@@ -167,13 +163,11 @@ test('ошибка фото понятна; пустой или повреждё
   await page.goto('/');
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'По фото', exact: true }).click();
-  await page
-    .locator('input[type=file]')
-    .setInputFiles({
-      name: 'broken.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('not an image'),
-    });
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'broken.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('not an image'),
+  });
   await expect(page.getByRole('alert')).toContainText('Не удалось открыть фото');
   await expect(page.getByAltText('Фото блюда 1')).toHaveCount(0);
   await page
@@ -190,15 +184,13 @@ test('ограничение трёх фото и удаление выбран�
   const png = await page.screenshot();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await page.getByRole('button', { name: 'По фото', exact: true }).click();
-  await page
-    .locator('input[type=file]')
-    .setInputFiles(
-      Array.from({ length: 4 }, (_, i) => ({
-        name: `meal-${i}.png`,
-        mimeType: 'image/png',
-        buffer: png,
-      })),
-    );
+  await page.locator('input[type=file]').setInputFiles(
+    Array.from({ length: 4 }, (_, i) => ({
+      name: `meal-${i}.png`,
+      mimeType: 'image/png',
+      buffer: png,
+    })),
+  );
   await expect(page.getByRole('alert')).toContainText('до трёх фотографий');
   await expect(page.getByAltText('Фото блюда 1')).toHaveCount(0);
   await page
@@ -224,9 +216,24 @@ test('высота как при открытой клавиатуре: диал
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Добавить еду', exact: true })).toBeFocused();
 });
-test('обновление базы v1 → v3 сохраняет старые ручные записи', async ({ page }) => {
+test('обновление базы v1 → v4 сохраняет старые ручные записи', async ({ page }) => {
+  await page.route('**/*', (route) =>
+    route.request().resourceType() === 'document'
+      ? route.fulfill({
+          contentType: 'text/html',
+          body: '<!doctype html><title>Migration fixture</title>',
+        })
+      : route.continue(),
+  );
   await page.goto('/');
-  const day = await page.getByLabel('Дата дневника').inputValue();
+  const day = await page.evaluate(() => {
+    const d = new Date();
+    return [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, '0'),
+      String(d.getDate()).padStart(2, '0'),
+    ].join('-');
+  });
   await page.evaluate(async (day) => {
     await new Promise<void>((resolve, reject) => {
       const remove = indexedDB.deleteDatabase('racionika');
@@ -266,6 +273,7 @@ test('обновление базы v1 → v3 сохраняет старые р
       };
     });
   }, day);
+  await page.unroute('**/*');
   await page.reload();
   await expect(page.locator('.meals li')).toContainText('Старая запись v1');
   await expect(page.locator('.calorie-orbit strong')).toHaveText('130');

@@ -1,3 +1,4 @@
+import { mealMetadata } from '../../core/diary';
 import { hasAiConsent } from '../../core/profile';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -210,6 +211,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
       const total = aggregatePer100(analysis, level, baseGrams);
       if (total.grams <= 0) throw new Error('Укажите массу хотя бы одного ингредиента.');
       await db.foodEntries.put({
+        ...mealMetadata(editing),
         id: editing?.id ?? crypto.randomUUID(),
         day,
         name: analysis.dish_name,

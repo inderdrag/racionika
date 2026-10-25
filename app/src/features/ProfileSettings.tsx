@@ -171,7 +171,8 @@ export function ProfileSettings({
             <h3>Проверка перед импортом</h3>
             <p>
               Блюд: {backup.foodEntries.length} · вода: {backup.waterLogs.length} · сообщений:{' '}
-              {backup.chatMessages.length} · записей веса: {backup.weightLogs.length}
+              {backup.chatMessages.length} · записей веса: {backup.weightLogs.length} · избранных:{' '}
+              {backup.favoriteDishes.length}
             </p>
             <p className="subtle">
               Записи объединятся по ID, одинаковые ID обновятся. Профиль, согласие и напоминания не
@@ -203,7 +204,7 @@ export function ProfileSettings({
           onClick={() => {
             if (
               window.confirm(
-                'Удалить профиль, дневник, воду, вес и чат с этого телефона? Сначала сохраните экспорт.',
+                'Удалить профиль, дневник, избранное, воду, вес и чат с этого телефона? Сначала сохраните экспорт.',
               )
             )
               void safe(async () => {
@@ -211,7 +212,14 @@ export function ProfileSettings({
                 if (!result.granted) throw new Error('Не удалось отключить напоминания.');
                 await db.transaction(
                   'rw',
-                  [db.foodEntries, db.waterLogs, db.chatMessages, db.aiCache, db.weightLogs],
+                  [
+                    db.foodEntries,
+                    db.waterLogs,
+                    db.chatMessages,
+                    db.aiCache,
+                    db.weightLogs,
+                    db.favoriteDishes,
+                  ],
                   async () => {
                     await Promise.all([
                       db.foodEntries.clear(),
@@ -219,6 +227,7 @@ export function ProfileSettings({
                       db.chatMessages.clear(),
                       db.aiCache.clear(),
                       db.weightLogs.clear(),
+                      db.favoriteDishes.clear(),
                     ]);
                   },
                 );
