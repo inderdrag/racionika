@@ -10,6 +10,7 @@ export interface ProviderInput {
   images?: { mimeType: 'image/jpeg'; data: string }[];
   quality: 'fast' | 'accurate';
   repair: boolean;
+  repairReason?: string;
   signal: AbortSignal;
 }
 export interface ProviderResult {
@@ -159,7 +160,7 @@ export function createProvider(config: ServerConfig, transport: typeof fetch = f
     const text = JSON.stringify({
       data: input.data,
       repair: input.repair
-        ? 'Предыдущий ответ не прошёл схему. Исправь формат и границы чисел, верни полный JSON.'
+        ? `Предыдущий ответ не прошёл проверку. ${input.repairReason ?? 'Исправь формат и границы чисел.'} Не меняй заданные пользователем массы и этикетку. Верни полный JSON.`
         : undefined,
     });
     const system = systemPrompt(input.task);

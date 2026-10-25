@@ -1,0 +1,37 @@
+{
+  "mode": "fixture",
+  "predictions": [
+    {
+      "id": "rice-cooked",
+      "analysis": {
+        "is_food": true,
+        "dish_name": "Контрольный рис",
+        "confidence": 1,
+        "cooking_method": "reference",
+        "ingredients": [
+          {
+            "name": "Рис белый длиннозёрный · приготовленный",
+            "grams": 150,
+            "grams_range": [150, 150],
+            "per_100g": {
+              "protein": 2.69,
+              "fat": 0.28,
+              "carbs": 28.17,
+              "kcal": 130.0
+            },
+            "confidence": 1
+          }
+        ],
+        "hidden_additions": {
+          "oil_g": 0,
+          "salt_g": 0,
+          "sugar_g": 0,
+          "sauce_kcal": 0,
+          "note": ""
+        },
+        "clarifying_questions": [],
+        "warnings": []
+      }
+    }
+  ]
+}

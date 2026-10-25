@@ -3,6 +3,8 @@ import { hasAiConsent } from '../../core/profile';
 import { useEffect, useRef, useState } from 'react';
 import {
   AnalysisResponseSchema,
+  RECOGNITION_REVISION,
+  reviewMealComposition,
   type MealAnalysis,
   type PublicConfig,
   type Quality,
@@ -38,6 +40,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [slow, setSlow] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const consent = hasAiConsent();
   const [result, setResult] = useState<MealAnalysis | undefined>(editing?.analysis);
   const [demo, setDemo] = useState(editing?.source === 'demo');
@@ -82,9 +85,11 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
     setError('');
     try {
       if (photos.length + sources.length > 3) throw new Error('Можно добавить до трёх фотографий.');
-      const processed = await Promise.all(sources.map((source) => compressPhoto(source, 1280)));
+      const processed = await Promise.all(sources.map((source) => compressPhoto(source, 1600)));
       setPhotos((current) =>
-        [...current, ...processed.map((data) => `data:image/jpeg;base64,${data}`)].slice(0, 3),
+        [
+          ...new Set([...current, ...processed.map((data) => `data:image/jpeg;base64,${data}`)]),
+        ].slice(0, 3),
       );
     } catch (error) {
       fail(error);
@@ -143,14 +148,14 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
           ? await Promise.all(
               photos.map(async (source) => ({
                 mimeType: 'image/jpeg' as const,
-                data: await compressPhoto(source, quality === 'fast' ? 768 : 1280),
+                data: await compressPhoto(source, quality === 'fast' ? 1280 : 1600),
               })),
             )
           : [];
       current.signal.throwIfAborted();
       const requestText = text;
       const hash = await hashAnalysis({
-        version: 2,
+        version: RECOGNITION_REVISION,
         provider: config?.provider,
         mode: config?.mode,
         kind: mode,
@@ -210,6 +215,11 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
       setError('Выберите, куда добавить блюдо: завтрак, обед, ужин или перекус.');
       return;
     }
+    const issues = reviewMealComposition(result);
+    if (issues.length) {
+      setError(issues[0].message);
+      return;
+    }
     try {
       const analysis = withoutAutomaticAdditions(result);
       const total = aggregatePer100(analysis, level, baseGrams);
@@ -234,6 +244,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
     }
   }
   const totals = result ? analysisTotals(result, level, baseGrams) : undefined;
+  const reviewIssues = result ? reviewMealComposition(result) : [];
   const componentCalories = totals ? roundedComponentCalories(totals.components) : [];
   const displayGrams = (value: number) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(value);
@@ -380,7 +391,28 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
               <div className="ingredient-list" aria-label="Состав блюда">
                 {totals?.components.map((item, index) => (
                   <section className="ingredient" key={index}>
-                    <h3 className="ingredient-title">{item.name}</h3>
+                    <div className="ingredient-head">
+                      <h3 className="ingredient-title">{item.name}</h3>
+                      {item.ingredientIndex !== undefined && (
+                        <button
+                          className="remove-ingredient"
+                          aria-label={`Удалить продукт ${index + 1}`}
+                          disabled={busy}
+                          onClick={() => {
+                            const ingredientIndex = item.ingredientIndex;
+                            setResult({
+                              ...result,
+                              ingredients: result.ingredients.filter(
+                                (_, i) => i !== ingredientIndex,
+                              ),
+                            });
+                            setError('');
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                     <div className="ingredient-mass">
                       {item.grams !== null ? (
                         <>
@@ -439,6 +471,56 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
                   </strong>
                 </div>
               </div>
+              {reviewIssues.length > 0 && (
+                <p className="error" role="alert">
+                  {reviewIssues[0].message}
+                </p>
+              )}
+              <details
+                className="analysis-check"
+                onToggle={(event) => setReviewOpen(event.currentTarget.open)}
+              >
+                <summary>
+                  {result.warnings.some((w) => w.includes('Ккал отличаются'))
+                    ? 'Проверить КБЖУ и состав'
+                    : 'Уточнить состав'}
+                </summary>
+                {reviewOpen && (
+                  <div>
+                    {result.warnings.map((warning, i) => (
+                      <p key={`warning-${i}`}>{warning}</p>
+                    ))}
+                    {result.clarifying_questions.map((item, i) => (
+                      <p key={`question-${i}`}>{item.question}</p>
+                    ))}
+                    {!editing && (
+                      <>
+                        <label>
+                          Уточнение
+                          <input
+                            value={hint}
+                            maxLength={500}
+                            placeholder="Например: рис 150 г готового, соуса нет"
+                            onChange={(e) => setHint(e.target.value)}
+                            disabled={busy}
+                          />
+                        </label>
+                        <p>Новый запрос к ИИ. Массу по фото лучше сверить на весах.</p>
+                        <button
+                          className="secondary"
+                          disabled={busy || !hint.trim()}
+                          onClick={() => void analyze()}
+                        >
+                          Повторить разбор
+                        </button>
+                      </>
+                    )}
+                    {editing && !result.warnings.length && !result.clarifying_questions.length && (
+                      <p>Исправьте массу выше или удалите лишний продукт.</p>
+                    )}
+                  </div>
+                )}
+              </details>
             </>
           )}
         </>
@@ -488,7 +570,11 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
         <button
           className="primary save-analysis"
           disabled={
-            !result.ingredients.length || !result.dish_name.trim() || (totals?.mealGrams ?? 0) <= 0
+            busy ||
+            reviewIssues.length > 0 ||
+            !result.ingredients.length ||
+            !result.dish_name.trim() ||
+            (totals?.mealGrams ?? 0) <= 0
           }
           onClick={() => void save()}
         >
@@ -550,7 +636,13 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
     setResult({
       ...result,
       ingredients: result.ingredients.map((item, i) =>
-        i === index ? { ...item, grams: Math.min(5000, Math.max(0, grams)) } : item,
+        i === index
+          ? {
+              ...item,
+              grams: Math.min(5000, Math.max(0, grams)),
+              grams_range: [Math.min(5000, Math.max(0, grams)), Math.min(5000, Math.max(0, grams))],
+            }
+          : item,
       ),
     });
   }

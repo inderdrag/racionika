@@ -26,10 +26,11 @@ describe('КБЖУ и скрытые добавки', () => {
     food.hidden_additions.oil_g = 100;
     expect(analysisTotals(food).additionsKcal).toBe(360);
   });
-  it('уточняет несогласованные калории', () => {
+  it('не переписывает заявленные калории, а предлагает сверку', () => {
     const food = structuredClone(DEMO_MEAL);
     food.ingredients[0].per_100g.kcal = 900;
-    expect(normalizeAnalysis(food).ingredients[0].per_100g.kcal).toBeCloseTo(156.4);
+    expect(normalizeAnalysis(food).ingredients[0].per_100g.kcal).toBe(900);
+    expect(normalizeAnalysis(food).warnings.join(' ')).toContain('значения не изменены');
   });
   it('не выдумывает БЖУ неизвестного соуса', () => {
     const food = structuredClone(DEMO_MEAL);

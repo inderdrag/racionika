@@ -195,6 +195,73 @@ describe('Сервер ИИ', () => {
     expect(provider).toHaveBeenCalledTimes(2);
     expect(provider.mock.calls[1][0]).toMatchObject({ repair: true });
   });
+  it('повтор ингредиента вызывает одну попытку исправления, а не двойные калории', async () => {
+    const bad = structuredClone(DEMO_MEAL);
+    bad.ingredients.push({ ...bad.ingredients[0] });
+    const provider = vi.fn<Provider>(async (input) => ({
+      json: input.repair ? DEMO_MEAL : bad,
+      usage: { input_tokens: 1, output_tokens: 2, estimated_cost_usd: null },
+    }));
+    const app = await server({}, provider),
+      headers = await auth(app);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/analyze-text',
+      headers,
+      payload: { text: 'Курица и рис' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().analysis.ingredients).toHaveLength(2);
+    expect(response.json().analysis.hidden_additions.oil_g).toBe(0);
+    expect(provider.mock.calls[1][0]).toMatchObject({
+      repair: true,
+      repairReason: expect.stringContaining('duplicate'),
+    });
+    expect(response.json().usage.input_tokens).toBe(2);
+  });
+  it('не публикует повторный неверный состав и не запускает бесконечные запросы', async () => {
+    const bad = structuredClone(DEMO_MEAL);
+    bad.ingredients[0].grams_range = [1, 2];
+    const provider = vi.fn<Provider>(async () => ({
+      json: bad,
+      usage: { input_tokens: 1, output_tokens: 2, estimated_cost_usd: null },
+    }));
+    const app = await server({}, provider),
+      headers = await auth(app);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/analyze-text',
+      headers,
+      payload: { text: 'Курица' },
+    });
+    expect(response.statusCode).toBe(502);
+    expect(response.json().error.code).toBe('bad_ai_output');
+    expect(provider).toHaveBeenCalledTimes(2);
+  });
+  it('ккал этикетки не пересчитывает по 4/4/9', async () => {
+    const meal = structuredClone(DEMO_MEAL);
+    meal.ingredients = [
+      {
+        ...meal.ingredients[0],
+        name: 'Продукт с этикетки',
+        grams: 40,
+        grams_range: [40, 40],
+        per_100g: { kcal: 200, protein: 10, fat: 5, carbs: 5 },
+      },
+    ];
+    const app = await server({}, async () => ({
+        json: meal,
+        usage: { input_tokens: 1, output_tokens: 2, estimated_cost_usd: null },
+      })),
+      headers = await auth(app);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/analyze-text',
+      headers,
+      payload: { text: '40 г продукта: на 100 г 200 ккал, Б10 Ж5 У5' },
+    });
+    expect(response.json().analysis.ingredients[0].per_100g.kcal).toBe(200);
+  });
   it('повторная попытка входит в глобальный бюджет', async () => {
     const provider = vi.fn<Provider>(async () => ({
       json: { invalid: true },

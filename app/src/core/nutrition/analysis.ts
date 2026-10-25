@@ -1,27 +1,34 @@
-import { MealAnalysisSchema, type MealAnalysis, type Nutrients } from '@racionika/shared';
-import { consistentNutrients, scaleNutrients } from './meal';
+import {
+  MealAnalysisSchema,
+  clearGuessedAdditions,
+  type MealAnalysis,
+  type Nutrients,
+} from '@racionika/shared';
+import { scaleNutrients } from './meal';
 import type { FoodEntry } from '../db';
 const clamp = (value: number, max: number) => Math.max(0, Math.min(max, value));
 export function normalizeAnalysis(input: MealAnalysis) {
   const result = MealAnalysisSchema.parse(input);
-  let corrected = false;
-  result.ingredients = result.ingredients.map((item) => {
-    const next = consistentNutrients(item.per_100g);
-    corrected ||= next.corrected;
-    return { ...item, per_100g: next.nutrients };
-  });
-  if (corrected)
+  // Keep declared calories: labels may use fibre, polyols or specific Atwater factors.
+  // A mismatch is a review signal, not permission to rewrite a label using 4/4/9.
+  if (
+    result.ingredients.some((item) => {
+      const n = item.per_100g,
+        computed = 4 * n.protein + 4 * n.carbs + 9 * n.fat;
+      return Math.abs(n.kcal - computed) / Math.max(computed, 1) > 0.15;
+    })
+  )
     result.warnings = [
-      ...result.warnings,
-      'Калории части ингредиентов уточнены кодом по БЖУ (4·Б + 4·У + 9·Ж).',
+      ...new Set([
+        ...result.warnings,
+        'Ккал отличаются от расчёта 4/4/9. Проверьте этикетку или справочник; значения не изменены.',
+      ]),
     ].slice(-10);
   return result;
 }
 // New recognitions never count guessed extras. Explicit ingredients remain intact.
 export function withoutAutomaticAdditions(input: MealAnalysis) {
-  const result = normalizeAnalysis(input);
-  result.hidden_additions = { oil_g: 0, salt_g: 0, sugar_g: 0, sauce_kcal: 0, note: '' };
-  return result;
+  return clearGuessedAdditions(normalizeAnalysis(input));
 }
 export interface MealComponent {
   name: string;

@@ -1548,3 +1548,46 @@ select {
   height: 24px;
   margin: 0;
 }
+
+/* Corrections stay collapsed; the ordinary result remains a compact ingredient list. */
+.ingredient-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.ingredient-head .ingredient-title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.remove-ingredient {
+  flex: 0 0 44px;
+  min-height: 44px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 24px;
+}
+.remove-ingredient:focus-visible,
+.analysis-check summary:focus-visible {
+  outline: 3px solid var(--water);
+  outline-offset: 2px;
+}
+.analysis-check {
+  margin-top: 16px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.analysis-check summary {
+  min-height: 44px;
+  padding-block: 10px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+.analysis-check p {
+  margin-top: 12px;
+}
+.analysis-check .secondary {
+  margin-top: 16px;
+}

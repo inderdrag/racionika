@@ -194,3 +194,11 @@ export type ProviderUsage = z.infer<typeof ProviderUsageSchema>;
 export type Ingredient = z.infer<typeof IngredientSchema>;
 
 export { ProfileSchema, type UserProfile } from './profile.js';
+
+export {
+  RECOGNITION_REVISION,
+  normalizedIngredientName,
+  reviewMealComposition,
+  clearGuessedAdditions,
+} from './meal-review.js';
+export type { MealReviewIssue } from './meal-review.js';

@@ -1,0 +1,601 @@
+{
+  "version": 1,
+  "scope": "reference calculations and text evaluation inputs; NOT photographs of actually weighed food",
+  "notes": [
+    "Массы заданы для расчётных примеров, не измерены нами на весах.",
+    "USDA SR Legacy April 2018; данные реальных марок могут отличаться.",
+    "Учебные этикетки явно синтетические. Фотографии и реальные этикетки пока не предоставлены.",
+    "Не использовать эти фикстуры как доказательство точности фото-распознавания."
+  ],
+  "cases": [
+    {
+      "id": "rice-cooked",
+      "kind": "reference_text",
+      "tags": ["cooked", "no_extras"],
+      "text": "150 г готового белого длиннозёрного риса, без масла.",
+      "ingredients": [
+        {
+          "name": "Рис белый длиннозёрный · приготовленный",
+          "aliases": ["Рис белый длиннозёрный · приготовленный"],
+          "grams": 150,
+          "per100": {
+            "protein": 2.69,
+            "fat": 0.28,
+            "carbs": 28.17,
+            "kcal": 130.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "168878",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 150,
+        "nutrients": {
+          "kcal": 195.0,
+          "protein": 4.035,
+          "fat": 0.42,
+          "carbs": 42.255
+        }
+      }
+    },
+    {
+      "id": "rice-dry",
+      "kind": "reference_text",
+      "tags": ["raw_dry"],
+      "text": "60 г сухого белого длиннозёрного риса. Посчитай именно сухой вес, без масла.",
+      "ingredients": [
+        {
+          "name": "Рис белый длиннозёрный · сырой",
+          "aliases": ["Рис белый длиннозёрный · сырой"],
+          "grams": 60,
+          "per100": {
+            "fat": 0.66,
+            "carbs": 79.95,
+            "kcal": 365.0,
+            "protein": 7.13
+          },
+          "source": {
+            "kind": "usda",
+            "id": "168877",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 60,
+        "nutrients": {
+          "kcal": 219.0,
+          "protein": 4.278,
+          "fat": 0.396,
+          "carbs": 47.97
+        }
+      }
+    },
+    {
+      "id": "chicken-rice",
+      "kind": "reference_text",
+      "tags": ["mixed", "no_extras"],
+      "text": "150 г запечённой грудки без кожи и 180 г готового белого длиннозёрного риса. Без масла и соусов.",
+      "ingredients": [
+        {
+          "name": "Куриная грудка без кожи · запечённая",
+          "aliases": ["Куриная грудка без кожи · запечённая"],
+          "grams": 150,
+          "per100": {
+            "fat": 3.57,
+            "carbs": 0.0,
+            "kcal": 165.0,
+            "protein": 31.02
+          },
+          "source": {
+            "kind": "usda",
+            "id": "171477",
+            "release": "SR Legacy 2018-04"
+          }
+        },
+        {
+          "name": "Рис белый длиннозёрный · приготовленный",
+          "aliases": ["Рис белый длиннозёрный · приготовленный"],
+          "grams": 180,
+          "per100": {
+            "protein": 2.69,
+            "fat": 0.28,
+            "carbs": 28.17,
+            "kcal": 130.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "168878",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 330,
+        "nutrients": {
+          "kcal": 481.5,
+          "protein": 51.372,
+          "fat": 5.859,
+          "carbs": 50.706
+        }
+      }
+    },
+    {
+      "id": "chicken-raw",
+      "kind": "reference_text",
+      "tags": ["raw"],
+      "text": "200 г сырой куриной грудки без кожи и костей. Указан сырой вес.",
+      "ingredients": [
+        {
+          "name": "Куриная грудка без кожи и костей · сырая",
+          "aliases": ["Куриная грудка без кожи и костей · сырая"],
+          "grams": 200,
+          "per100": {
+            "fat": 2.62,
+            "kcal": 120.0,
+            "protein": 22.5,
+            "carbs": 0.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "171077",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 200,
+        "nutrients": {
+          "kcal": 240.0,
+          "protein": 45.0,
+          "fat": 5.24,
+          "carbs": 0.0
+        }
+      }
+    },
+    {
+      "id": "fried-no-extra-oil",
+      "kind": "reference_text",
+      "tags": ["cooked", "included_oil"],
+      "text": "100 г жареной куриной грудки без кожи. Масло приготовления уже включено в КБЖУ готового продукта; отдельно не добавлялось.",
+      "ingredients": [
+        {
+          "name": "Куриная грудка без кожи · жареный",
+          "aliases": ["Куриная грудка без кожи · жареный"],
+          "grams": 100,
+          "per100": {
+            "protein": 33.44,
+            "fat": 4.71,
+            "carbs": 0.51,
+            "kcal": 187.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "171078",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 100,
+        "nutrients": {
+          "kcal": 187.0,
+          "protein": 33.44,
+          "fat": 4.71,
+          "carbs": 0.51
+        }
+      }
+    },
+    {
+      "id": "rice-explicit-oil",
+      "kind": "reference_text",
+      "tags": ["explicit_oil"],
+      "text": "150 г варёного белого длиннозёрного риса без масла, сверху отдельно 10 г оливкового масла. Масло считать один раз.",
+      "ingredients": [
+        {
+          "name": "Рис белый длиннозёрный · приготовленный",
+          "aliases": ["Рис белый длиннозёрный · приготовленный"],
+          "grams": 150,
+          "per100": {
+            "protein": 2.69,
+            "fat": 0.28,
+            "carbs": 28.17,
+            "kcal": 130.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "168878",
+            "release": "SR Legacy 2018-04"
+          }
+        },
+        {
+          "name": "Масло оливковое",
+          "aliases": ["Масло оливковое"],
+          "grams": 10,
+          "per100": {
+            "fat": 100.0,
+            "carbs": 0.0,
+            "kcal": 884.0,
+            "protein": 0.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "171413",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 160,
+        "nutrients": {
+          "kcal": 283.4,
+          "protein": 4.035,
+          "fat": 10.42,
+          "carbs": 42.255
+        }
+      }
+    },
+    {
+      "id": "eggs-edible",
+      "kind": "reference_text",
+      "tags": ["edible_mass"],
+      "text": "100 г варёных вкрутую куриных яиц без скорлупы, без добавок.",
+      "ingredients": [
+        {
+          "name": "Яйцо куриное целое · варёное вкрутую",
+          "aliases": ["Яйцо куриное целое · варёное вкрутую"],
+          "grams": 100,
+          "per100": {
+            "kcal": 155.0,
+            "protein": 12.58,
+            "fat": 10.61,
+            "carbs": 1.12
+          },
+          "source": {
+            "kind": "usda",
+            "id": "173424",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 100,
+        "nutrients": {
+          "kcal": 155.0,
+          "protein": 12.58,
+          "fat": 10.61,
+          "carbs": 1.12
+        }
+      }
+    },
+    {
+      "id": "oats-dry",
+      "kind": "reference_text",
+      "tags": ["raw_dry"],
+      "text": "40 г сухих овсяных хлопьев, вес до варки.",
+      "ingredients": [
+        {
+          "name": "Овсяные хлопья · сухие",
+          "aliases": ["Овсяные хлопья · сухие"],
+          "grams": 40,
+          "per100": {
+            "fat": 6.52,
+            "carbs": 67.7,
+            "kcal": 379.0,
+            "protein": 13.15
+          },
+          "source": {
+            "kind": "usda",
+            "id": "173904",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 40,
+        "nutrients": {
+          "kcal": 151.6,
+          "protein": 5.26,
+          "fat": 2.608,
+          "carbs": 27.08
+        }
+      }
+    },
+    {
+      "id": "oats-cooked",
+      "kind": "reference_text",
+      "tags": ["cooked", "no_extras"],
+      "text": "200 г овсяной каши на воде без соли и масла. Вес готовой каши.",
+      "ingredients": [
+        {
+          "name": "Овсяная каша на воде · без соли",
+          "aliases": ["Овсяная каша на воде · без соли"],
+          "grams": 200,
+          "per100": {
+            "protein": 2.54,
+            "fat": 1.52,
+            "carbs": 12.0,
+            "kcal": 71.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "173905",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 200,
+        "nutrients": {
+          "kcal": 142.0,
+          "protein": 5.08,
+          "fat": 3.04,
+          "carbs": 24.0
+        }
+      }
+    },
+    {
+      "id": "pasta-dry",
+      "kind": "reference_text",
+      "tags": ["raw_dry"],
+      "text": "80 г сухих обычных макарон без обогащения, именно сухая масса.",
+      "ingredients": [
+        {
+          "name": "Макароны необогащённые · сухой",
+          "aliases": ["Макароны необогащённые · сухой"],
+          "grams": 80,
+          "per100": {
+            "protein": 13.04,
+            "fat": 1.51,
+            "carbs": 74.67,
+            "kcal": 371.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "168927",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 80,
+        "nutrients": {
+          "kcal": 296.8,
+          "protein": 10.432,
+          "fat": 1.208,
+          "carbs": 59.736
+        }
+      }
+    },
+    {
+      "id": "pasta-cooked",
+      "kind": "reference_text",
+      "tags": ["cooked"],
+      "text": "180 г готовых обычных макарон без соли и масла.",
+      "ingredients": [
+        {
+          "name": "Макароны необогащённые · приготовленный, без соли",
+          "aliases": ["Макароны необогащённые · приготовленный, без соли"],
+          "grams": 180,
+          "per100": {
+            "fat": 0.93,
+            "protein": 5.8,
+            "carbs": 30.86,
+            "kcal": 158.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "168928",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 180,
+        "nutrients": {
+          "kcal": 284.4,
+          "protein": 10.44,
+          "fat": 1.674,
+          "carbs": 55.548
+        }
+      }
+    },
+    {
+      "id": "nuts",
+      "kind": "reference_text",
+      "tags": ["specific_atwater"],
+      "text": "30 г миндаля без добавок.",
+      "ingredients": [
+        {
+          "name": "Миндаль",
+          "aliases": ["Миндаль"],
+          "grams": 30,
+          "per100": {
+            "protein": 21.15,
+            "fat": 49.93,
+            "carbs": 21.55,
+            "kcal": 579.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "170567",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 30,
+        "nutrients": {
+          "kcal": 173.7,
+          "protein": 6.345,
+          "fat": 14.979,
+          "carbs": 6.465
+        }
+      }
+    },
+    {
+      "id": "fruit-yogurt",
+      "kind": "reference_text",
+      "tags": ["mixed", "edible_mass"],
+      "text": "120 г съедобной мякоти банана и 150 г греческого обезжиренного йогурта без добавок.",
+      "ingredients": [
+        {
+          "name": "Банан · сырой",
+          "aliases": ["Банан · сырой"],
+          "grams": 120,
+          "per100": {
+            "carbs": 22.84,
+            "kcal": 89.0,
+            "protein": 1.09,
+            "fat": 0.33
+          },
+          "source": {
+            "kind": "usda",
+            "id": "173944",
+            "release": "SR Legacy 2018-04"
+          }
+        },
+        {
+          "name": "Йогурт греческий обезжиренный",
+          "aliases": ["Йогурт греческий обезжиренный"],
+          "grams": 150,
+          "per100": {
+            "protein": 10.19,
+            "fat": 0.39,
+            "carbs": 3.6,
+            "kcal": 59.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "170894",
+            "release": "SR Legacy 2018-04"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 270,
+        "nutrients": {
+          "kcal": 195.3,
+          "protein": 16.593,
+          "fat": 0.981,
+          "carbs": 32.808
+        }
+      }
+    },
+    {
+      "id": "sauce-label",
+      "kind": "reference_text",
+      "tags": ["label", "sauce", "no_double_fat"],
+      "text": "150 г варёного белого длиннозёрного риса и 20 г тестового сливочного соуса. Этикетка соуса на 100 г: 240 ккал, Б1 Ж20 У14. Жир уже в соусе, отдельно масло не добавлялось.",
+      "ingredients": [
+        {
+          "name": "Рис белый длиннозёрный · приготовленный",
+          "aliases": ["Рис белый длиннозёрный · приготовленный"],
+          "grams": 150,
+          "per100": {
+            "protein": 2.69,
+            "fat": 0.28,
+            "carbs": 28.17,
+            "kcal": 130.0
+          },
+          "source": {
+            "kind": "usda",
+            "id": "168878",
+            "release": "SR Legacy 2018-04"
+          }
+        },
+        {
+          "name": "Тестовый сливочный соус",
+          "aliases": ["Тестовый сливочный соус"],
+          "grams": 20,
+          "per100": {
+            "kcal": 240,
+            "protein": 1,
+            "fat": 20,
+            "carbs": 14
+          },
+          "source": {
+            "kind": "synthetic_label",
+            "note": "Учебная этикетка; не данные реального бренда"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 170,
+        "nutrients": {
+          "kcal": 243.0,
+          "protein": 4.235,
+          "fat": 4.42,
+          "carbs": 45.055
+        }
+      }
+    },
+    {
+      "id": "label-not-449",
+      "kind": "reference_text",
+      "tags": ["synthetic_label", "declared_energy"],
+      "text": "45 г тестового батончика с клетчаткой. Этикетка на 100 г: 180 ккал, Б20 Ж4 У8. Сохрани заявленные значения, не исправляй по 4/4/9.",
+      "ingredients": [
+        {
+          "name": "Тестовый батончик с клетчаткой",
+          "aliases": ["Тестовый батончик с клетчаткой"],
+          "grams": 45,
+          "per100": {
+            "kcal": 180,
+            "protein": 20,
+            "fat": 4,
+            "carbs": 8
+          },
+          "source": {
+            "kind": "synthetic_label",
+            "note": "Учебная этикетка; не данные реального бренда"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 45,
+        "nutrients": {
+          "kcal": 81.0,
+          "protein": 9.0,
+          "fat": 1.8,
+          "carbs": 3.6
+        }
+      }
+    },
+    {
+      "id": "label-whole-product",
+      "kind": "reference_text",
+      "tags": ["synthetic_label", "whole_product", "included_sauce"],
+      "text": "100 г тестового салата в упаковке. На 100 г 150 ккал, Б5 Ж10 У10. Уже содержит заправку; её отдельно не считать. Состав по ингредиентам неизвестен.",
+      "ingredients": [
+        {
+          "name": "Тестовый салат в упаковке",
+          "aliases": ["Тестовый салат в упаковке"],
+          "grams": 100,
+          "per100": {
+            "kcal": 150,
+            "protein": 5,
+            "fat": 10,
+            "carbs": 10
+          },
+          "source": {
+            "kind": "synthetic_label",
+            "note": "Учебная этикетка; не данные реального бренда"
+          }
+        }
+      ],
+      "expected": {
+        "grams": 100,
+        "nutrients": {
+          "kcal": 150.0,
+          "protein": 5.0,
+          "fat": 10.0,
+          "carbs": 10.0
+        }
+      }
+    }
+  ]
+}

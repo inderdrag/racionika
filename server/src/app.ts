@@ -8,6 +8,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import {
   APP_VERSION,
+  MealAnalysisSchema,
+  reviewMealComposition,
+  clearGuessedAdditions,
   RegisterInputSchema,
   AnalyzeTextSchema,
   AnalyzeMealSchema,
@@ -197,11 +200,20 @@ export async function buildServer(
       outputTokens = 0,
       cost: number | null = 0;
     try {
+      let repairReason = 'Исправь формат JSON и границы чисел.';
       for (let attempt = 0; attempt < 2; attempt++) {
         limits.providerCall();
         let result;
         try {
-          result = await provider({ task, data, images, quality, repair: attempt > 0, signal });
+          result = await provider({
+            task,
+            data,
+            images,
+            quality,
+            repair: attempt > 0,
+            repairReason,
+            signal,
+          });
         } catch (error) {
           if (error instanceof ApiFailure && error.code === 'bad_ai_output' && attempt === 0)
             continue;
@@ -215,6 +227,16 @@ export async function buildServer(
             : cost + result.usage.estimated_cost_usd;
         const parsed = schemas[task].safeParse(result.json);
         if (parsed.success) {
+          if (task === 'meal') {
+            const review = reviewMealComposition(MealAnalysisSchema.parse(parsed.data));
+            if (review.length) {
+              repairReason = review
+                .map((issue) => `${issue.code}: ${issue.message}`)
+                .join(' ')
+                .slice(0, 700);
+              continue;
+            }
+          }
           const meta = {
             demo: config.mock,
             usage: {
@@ -225,7 +247,7 @@ export async function buildServer(
             daily: limits.usage(id),
           };
           return task === 'meal'
-            ? { analysis: parsed.data, ...meta }
+            ? { analysis: clearGuessedAdditions(MealAnalysisSchema.parse(parsed.data)), ...meta }
             : task === 'lookup'
               ? { food: parsed.data, ...meta }
               : { reply: parsed.data, ...meta };
