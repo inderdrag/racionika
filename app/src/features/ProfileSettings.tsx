@@ -46,11 +46,7 @@ export function ProfileSettings({
               : 'Поддержание веса'}
           {profile.goal !== 'maintain' ? ` · цель ${profile.targetWeight} кг` : ''}
         </p>
-        <p className="subtle">
-          {plan.status === 'ready'
-            ? `Личная норма: ${plan.calories} ккал в день`
-            : 'Индивидуальный план со специалистом'}
-        </p>
+
         <button className="secondary" onClick={onEdit}>
           Изменить профиль и цель
         </button>
@@ -71,6 +67,30 @@ export function ProfileSettings({
             <option value="dark">Тёмная</option>
           </select>
         </label>
+      </section>
+      <section className="card profile-card calorie-goal-card">
+        <h2>Цель калорий на день</h2>
+        {plan.status === 'ready' ? (
+          <>
+            <strong className="daily-calorie-goal">
+              {plan.calories} <small>ккал в день</small>
+            </strong>
+            <p className="subtle">
+              {profile.goal === 'lose'
+                ? 'Для снижения веса'
+                : profile.goal === 'gain'
+                  ? 'Для набора веса'
+                  : 'Для поддержания веса'}
+              . Рассчитано по возрасту, полу, росту, весу и активности. Это стартовый ориентир, не
+              медицинское назначение.
+            </p>
+          </>
+        ) : (
+          <p className="subtle">{plan.message}</p>
+        )}
+        <button className="secondary" onClick={onEdit}>
+          Настроить цель калорий
+        </button>
       </section>
       <NotificationSettings />
       <section className="card profile-card">
@@ -108,16 +128,10 @@ export function ProfileSettings({
         >
           Использование ИИ
         </button>
-        <label className="consent">
-          <input
-            type="checkbox"
-            defaultChecked={localStorage.getItem('racionika.autoAdditions') !== 'false'}
-            onChange={(e) =>
-              localStorage.setItem('racionika.autoAdditions', String(e.target.checked))
-            }
-          />
-          <span>Учитывать масло и добавки в новых блюдах</span>
-        </label>
+        <p className="subtle">
+          Масло, соль, сахар и соус автоматически не добавляются. Учитываются только продукты в
+          составе блюда.
+        </p>
       </section>
       <section className="card profile-card">
         <h2>Данные на телефоне</h2>

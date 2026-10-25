@@ -316,22 +316,26 @@ test('блюдо ИИ сохраняет детали при правке сос
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
     .click();
+  await page.getByRole('combobox', { name: 'Приём пищи для блюда' }).selectOption('lunch');
   await page.getByRole('button', { name: 'Сохранить демозапись' }).click();
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await details(page);
   await page.locator('.meal-edit').click();
   await expect(page.getByRole('dialog').getByLabel('Заметка', { exact: true })).toHaveCount(0);
   await page.getByLabel('Масса ингредиента 1', { exact: true }).fill('300');
+  await expect(page.getByRole('combobox', { name: 'Приём пищи для блюда' })).toHaveValue(
+    'breakfast',
+  );
   await page.getByRole('button', { name: 'Сохранить демозапись' }).click();
   await expect(page.locator('.diary-note')).toHaveText('Домашний завтрак');
   await expect(page.getByRole('region', { name: 'Завтрак', exact: true })).toContainText(
-    '794 ккал',
+    '729 ккал',
   );
   await actions(page);
   await page.getByRole('button', { name: 'Копировать на дату' }).click();
   await page.getByLabel('Дата добавления').fill('2026-11-13');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await page.getByLabel('Дата дневника').fill('2026-11-13');
-  await expect(page.locator('.calorie-orbit strong')).toHaveText('794');
+  await expect(page.locator('.calorie-orbit strong')).toHaveText('729');
   await expect(page.locator('.diary-note')).toHaveText('Домашний завтрак');
 });

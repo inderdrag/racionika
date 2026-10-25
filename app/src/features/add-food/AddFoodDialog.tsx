@@ -1,4 +1,4 @@
-import { mealMetadata } from '../../core/diary';
+import { mealMetadata, mealTypes } from '../../core/diary';
 import { hasAiConsent } from '../../core/profile';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -7,12 +7,13 @@ import {
   type PublicConfig,
   type Quality,
 } from '@racionika/shared';
-import { db, type FoodEntry } from '../../core/db';
+import { db, type FoodEntry, type MealType } from '../../core/db';
 import { analyzePhotos, analyzeText, getConfig, AiError } from '../../core/ai/client';
 import { compressPhoto, hashAnalysis } from '../../core/ai/images';
 import {
   analysisTotals,
   normalizeAnalysis,
+  withoutAutomaticAdditions,
   aggregatePer100,
   roundedComponentCalories,
 } from '../../core/nutrition/analysis';
@@ -40,10 +41,8 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
   const [result, setResult] = useState<MealAnalysis | undefined>(editing?.analysis);
   const [demo, setDemo] = useState(editing?.source === 'demo');
   const [baseGrams, setBaseGrams] = useState(editing?.baseGrams ?? editing?.grams ?? 0);
-  const [level] = useState(
-    editing?.additionsLevel ??
-      (localStorage.getItem('racionika.autoAdditions') === 'false' ? 0 : 1),
-  );
+  const level = 0;
+  const [mealType, setMealType] = useState<MealType | ''>(editing?.mealType ?? '');
   useEffect(() => {
     dialog.current?.showModal();
     let alive = true;
@@ -206,12 +205,17 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
   }
   async function save() {
     if (!result?.ingredients.length) return;
+    if (!mealType) {
+      setError('Выберите, куда добавить блюдо: завтрак, обед, ужин или перекус.');
+      return;
+    }
     try {
-      const analysis = normalizeAnalysis(result);
+      const analysis = withoutAutomaticAdditions(result);
       const total = aggregatePer100(analysis, level, baseGrams);
       if (total.grams <= 0) throw new Error('Укажите массу хотя бы одного ингредиента.');
       await db.foodEntries.put({
         ...mealMetadata(editing),
+        mealType,
         id: editing?.id ?? crypto.randomUUID(),
         day,
         name: analysis.dish_name,
@@ -348,6 +352,24 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onSaved }: Prop
             </>
           ) : (
             <>
+              <label className="field result-category">
+                Куда добавить блюдо?
+                <select
+                  aria-label="Приём пищи для блюда"
+                  value={mealType}
+                  onChange={(event) => {
+                    setMealType(event.target.value as MealType | '');
+                    setError('');
+                  }}
+                >
+                  <option value="">Выберите приём пищи</option>
+                  {mealTypes.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="meal-name">{result.dish_name}</div>
               <div className="ingredient-list" aria-label="Состав блюда">
                 {totals?.components.map((item, index) => (

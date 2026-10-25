@@ -30,15 +30,16 @@ test('описание → состав → локальный пересчёт 
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
     .click();
-  await expect(page.locator('.result-kcal')).toContainText('527');
+  await expect(page.locator('.result-kcal')).toContainText('482');
   await page.getByLabel('Масса ингредиента 1', { exact: true }).fill('300');
-  await expect(page.locator('.result-kcal')).toContainText('794');
+  await expect(page.locator('.result-kcal')).toContainText('729');
   expect(requests).toBe(1);
+  await page.getByRole('combobox', { name: 'Приём пищи для блюда' }).selectOption('lunch');
   await page.getByRole('button', { name: 'Сохранить демозапись' }).click();
-  await expect(page.locator('.calorie-orbit strong')).toHaveText('794');
-  await expect(page.getByText(/489 г/).first()).toBeVisible();
+  await expect(page.locator('.calorie-orbit strong')).toHaveText('729');
+  await expect(page.getByText(/480 г/).first()).toBeVisible();
   await page.reload();
-  await expect(page.locator('.calorie-orbit strong')).toHaveText('794');
+  await expect(page.locator('.calorie-orbit strong')).toHaveText('729');
   let configRequests = 0;
   await page.route('**/v1/config', (route) => {
     configRequests++;
@@ -112,12 +113,13 @@ test('повтор того же описания использует лока�
       .getByRole('dialog')
       .getByRole('button', { name: 'Определить КБЖУ', exact: true })
       .click();
-    await expect(page.locator('.result-kcal')).toContainText('527');
+    await expect(page.locator('.result-kcal')).toContainText('482');
     await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
   }
   expect(requests).toBe(1);
 });
-test('в результате только состав, граммы и калории; добавки входят в сумму', async ({ page }) => {
+test('в результате категория, состав и калории без автоматических добавок', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('racionika.autoAdditions', 'true'));
   let requests = 0;
   page.on('request', (req) => {
     if (req.url().includes('/v1/analyze-text')) requests++;
@@ -129,16 +131,14 @@ test('в результате только состав, граммы и кал�
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
     .click();
-  await expect(page.locator('.result-kcal')).toContainText('527');
-  await expect(page.locator('.result-grams')).toHaveText('336 г');
+  await expect(page.locator('.result-kcal')).toContainText('482');
+  await expect(page.locator('.result-grams')).toHaveText('330 г');
   await expect(page.locator('.ingredient-title')).toHaveText([
     'Куриная грудка, запечённая',
     'Рис белый, варёный',
-    'Масло',
-    'Соль',
   ]);
   const calories = await page.locator('.component-kcal').allTextContents();
-  expect(calories.reduce((sum, value) => sum + Number.parseInt(value), 0)).toBe(527);
+  expect(calories.reduce((sum, value) => sum + Number.parseInt(value), 0)).toBe(482);
   for (const selector of [
     '.additions',
     '.ingredient-search',
@@ -150,9 +150,10 @@ test('в результате только состав, граммы и кал�
     await expect(page.getByRole('dialog').locator(selector)).toHaveCount(0);
   await expect(page.getByLabel('Качество', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Уточнить у ИИ (новый запрос)' })).toHaveCount(0);
-  await page.getByLabel('Масса ингредиента 3', { exact: true }).fill('0');
-  await expect(page.locator('.result-kcal')).toContainText('482');
-  await expect(page.locator('.result-grams')).toHaveText('331 г');
+  await expect(page.getByLabel('Масса ингредиента 3', { exact: true })).toHaveCount(0);
+  await page.getByLabel('Масса ингредиента 1', { exact: true }).fill('0');
+  await expect(page.locator('.result-kcal')).toContainText('234');
+  await expect(page.locator('.result-grams')).toHaveText('180 г');
   expect(requests).toBe(1);
 });
 for (const kind of ['text', 'photo'] as const) {
@@ -184,15 +185,24 @@ for (const kind of ['text', 'photo'] as const) {
       .getByRole('dialog')
       .getByRole('button', { name: 'Определить КБЖУ', exact: true })
       .click();
-    await expect(page.locator('.result-kcal')).toContainText('527');
-    await expect(page.locator('.result-grams')).toHaveText('336 г');
+    await expect(page.locator('.result-kcal')).toContainText('482');
+    await expect(page.locator('.result-grams')).toHaveText('330 г');
     await expect(
-      page.getByRole('dialog').locator('.ai-mode, .subtle, textarea, select, .consent'),
+      page.getByRole('dialog').locator('.ai-mode, .subtle, textarea, .consent'),
     ).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Сохранить блюдо', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Сохранить блюдо', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Выберите, куда добавить');
+    await page.getByRole('combobox', { name: 'Приём пищи для блюда' }).selectOption('dinner');
+    const categoryBox = await page.locator('.result-category').boundingBox();
+    const nameBox = await page.locator('.meal-name').boundingBox();
+    expect(categoryBox!.y).toBeLessThan(nameBox!.y);
     expect(await page.getByRole('dialog').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
       true,
     );
+    await page.getByRole('button', { name: 'Сохранить блюдо', exact: true }).click();
+    await page.getByRole('button', { name: 'Дневник', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Ужин', exact: true })).toContainText('482 ккал');
   });
 }
 test('серверная ошибка квоты понятна и ручной ввод остаётся', async ({ page }) => {

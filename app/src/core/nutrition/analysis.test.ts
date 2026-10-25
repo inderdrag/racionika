@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   analysisTotals,
+  withoutAutomaticAdditions,
   normalizeAnalysis,
   aggregatePer100,
   roundedComponentCalories,
@@ -98,5 +99,41 @@ describe('Простой состав и итоги', () => {
       );
       expect(display.every((value) => value >= 0)).toBe(true);
     }
+  });
+});
+
+describe('Новые блюда без автоматических добавок', () => {
+  it('обнуляет предполагаемые добавки, не меняя исходный ответ и реальные продукты', () => {
+    const result = withoutAutomaticAdditions(DEMO_MEAL);
+    const total = analysisTotals(result);
+    expect(total.nutrients.kcal).toBeCloseTo(481.5);
+    expect(total.mealGrams).toBe(330);
+    expect(total.additionsKcal).toBe(0);
+    expect(total.components).toHaveLength(2);
+    expect(DEMO_MEAL.hidden_additions.oil_g).toBe(5);
+  });
+  it('явно указанный продукт масло остаётся в составе и калориях', () => {
+    const input = structuredClone(DEMO_MEAL);
+    input.ingredients.push({
+      name: 'Масло на хлебе',
+      grams: 5,
+      grams_range: [5, 5],
+      per_100g: { kcal: 900, protein: 0, fat: 100, carbs: 0 },
+      confidence: 1,
+    });
+    const total = analysisTotals(withoutAutomaticAdditions(input));
+    expect(total.components.at(-1)?.name).toBe('Масло на хлебе');
+    expect(total.nutrients.kcal).toBeCloseTo(526.5);
+    expect(total.mealGrams).toBe(335);
+  });
+  it('не считает скрытые соус, сахар и соль даже в старом ответе модели', () => {
+    const input = structuredClone(DEMO_MEAL);
+    input.hidden_additions.sauce_kcal = 100;
+    input.hidden_additions.sugar_g = 20;
+    input.hidden_additions.salt_g = 10;
+    const total = analysisTotals(withoutAutomaticAdditions(input));
+    expect(total.sauceUnknown).toBe(false);
+    expect(total.mealGrams).toBe(330);
+    expect(total.nutrients.kcal).toBeCloseTo(481.5);
   });
 });

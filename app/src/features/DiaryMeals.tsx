@@ -3,6 +3,7 @@ import { liveQuery } from 'dexie';
 import { db, type FavoriteDish, type FoodEntry, type MealType } from '../core/db';
 import {
   copyDish,
+  prepareDishForReuse,
   dishKey,
   localTime,
   mealTypes,
@@ -31,7 +32,9 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
   const editorOpener = useRef<HTMLElement | null>(null);
   function openEditor(value: Editor) {
     editorOpener.current = document.activeElement as HTMLElement | null;
-    setEditor(value);
+    setEditor(
+      value.mode === 'details' ? value : { ...value, entry: prepareDishForReuse(value.entry) },
+    );
   }
   useEffect(() => {
     const sub = liveQuery(async () => ({
@@ -254,7 +257,8 @@ export function DiaryMeals({ entries, day, expanded, onAdd, onEdit }: Props) {
                   <div>
                     <strong>{entry.name}</strong>
                     <small>
-                      {Math.round(entry.grams)} г · {Math.round(entryTotals(entry).kcal)} ккал
+                      {Math.round(prepareDishForReuse(entry).grams)} г ·{' '}
+                      {Math.round(entryTotals(prepareDishForReuse(entry)).kcal)} ккал
                       {entry.source === 'demo' ? ' · ДЕМО' : ''}
                     </small>
                   </div>

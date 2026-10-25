@@ -1,3 +1,4 @@
+import { aggregatePer100, withoutAutomaticAdditions } from './nutrition/analysis';
 import type { FoodEntry, MealType } from './db';
 export const mealTypes: { value: MealType; label: string }[] = [
   { value: 'breakfast', label: 'Завтрак' },
@@ -61,6 +62,12 @@ export function validateDetails(day: string, time: string, note: string, categor
   if (category && !mealTypes.some((item) => item.value === category))
     throw new Error('Выберите приём пищи.');
 }
+export function prepareDishForReuse(entry: FoodEntry): FoodEntry {
+  if (!entry.analysis) return entry;
+  const analysis = withoutAutomaticAdditions(entry.analysis);
+  const total = aggregatePer100(analysis, 0, entry.baseGrams ?? entry.grams);
+  return { ...entry, analysis, additionsLevel: 0, grams: total.grams, per100: total.per100 };
+}
 export function copyDish(
   entry: FoodEntry,
   day: string,
@@ -70,7 +77,7 @@ export function copyDish(
 ): FoodEntry {
   validateDetails(day, time, note, category);
   return {
-    ...structuredClone(entry),
+    ...structuredClone(prepareDishForReuse(entry)),
     id: crypto.randomUUID(),
     day,
     createdAt: new Date().toISOString(),

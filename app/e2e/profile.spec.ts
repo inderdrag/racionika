@@ -31,7 +31,7 @@ test('первый вход: профиль, безопасная норма и 
     .getByRole('dialog')
     .getByRole('button', { name: 'Определить КБЖУ', exact: true })
     .click();
-  await expect(page.locator('.result-kcal')).toContainText('527');
+  await expect(page.locator('.result-kcal')).toContainText('482');
   await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
   await page.getByRole('button', { name: 'Наставник', exact: true }).click();
   await expect(
@@ -125,4 +125,23 @@ test('запись веса и профиль сохраняются после 
   await page.reload();
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
   await expect(page.locator('.weight-history')).toContainText('79.5 кг');
+});
+test('цель калорий заметна в Профиле, пересчитывается и сохраняется на Главной', async ({
+  page,
+}) => {
+  await register(page, false);
+  await page.getByRole('button', { name: 'Профиль', exact: true }).click();
+  await expect(page.locator('.calorie-goal-card')).toContainText('1602');
+  await expect(
+    page.getByText('Учитывать масло и добавки в новых блюдах', { exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Настроить цель калорий' }).click();
+  await page.getByRole('combobox', { name: 'Моя цель', exact: true }).selectOption('maintain');
+  await page.getByRole('button', { name: 'Рассчитать мой план' }).click();
+  await expect(page.locator('.plan-preview > strong')).toContainText('2136');
+  await page.getByRole('button', { name: 'Сохранить профиль' }).click();
+  await page.getByRole('button', { name: 'Главная', exact: true }).click();
+  await expect(page.locator('.energy-copy')).toContainText('2136 ккал');
+  await page.reload();
+  await expect(page.locator('.energy-copy')).toContainText('2136 ккал');
 });

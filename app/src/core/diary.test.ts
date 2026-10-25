@@ -1,7 +1,9 @@
+import { DEMO_MEAL } from '../../../server/src/providers/mock';
 import { expect, it } from 'vitest';
 import type { FoodEntry } from './db';
 import {
   copyDish,
+  prepareDishForReuse,
   dishKey,
   localTime,
   mealMetadata,
@@ -84,4 +86,22 @@ it('не изменяет исходный порядок массива и со
   const values = [entry, { ...entry, id: '2', name: 'Гречка', createdAt: '2026-10-25T12:00:00Z' }];
   expect(recentDishes(values, 1)[0].id).toBe('2');
   expect(values[0].id).toBe('original');
+});
+
+it('повторное добавление старого блюда убирает догадки, не меняя историю', () => {
+  const old = {
+    ...entry,
+    analysis: structuredClone(DEMO_MEAL),
+    additionsLevel: 1,
+    baseGrams: 330,
+    grams: 336,
+  };
+  const preview = prepareDishForReuse(old);
+  expect(preview.grams).toBe(330);
+  expect(preview.analysis?.hidden_additions.oil_g).toBe(0);
+  const copy = copyDish(old, '2026-10-25', '12:00', 'lunch', '');
+  expect(copy.grams).toBe(330);
+  expect(copy.additionsLevel).toBe(0);
+  expect(old.grams).toBe(336);
+  expect(old.analysis.hidden_additions.oil_g).toBe(5);
 });

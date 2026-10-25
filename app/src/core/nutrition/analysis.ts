@@ -17,6 +17,12 @@ export function normalizeAnalysis(input: MealAnalysis) {
     ].slice(-10);
   return result;
 }
+// New recognitions never count guessed extras. Explicit ingredients remain intact.
+export function withoutAutomaticAdditions(input: MealAnalysis) {
+  const result = normalizeAnalysis(input);
+  result.hidden_additions = { oil_g: 0, salt_g: 0, sugar_g: 0, sauce_kcal: 0, note: '' };
+  return result;
+}
 export interface MealComponent {
   name: string;
   grams: number | null;
