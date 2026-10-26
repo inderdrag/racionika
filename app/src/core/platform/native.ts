@@ -1,7 +1,7 @@
 import { NativeReminders } from '../notifications/native-reminders';
 import { CapacitorHttp } from '@capacitor/core';
 import { App } from '@capacitor/app';
-import { shareBackup } from './share-backup';
+import { shareBackup, shareText } from './share-backup';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
@@ -80,7 +80,7 @@ export const nativePlatform: Platform = {
       return response.data;
     },
   },
-  share: { json: shareBackup },
+  share: { json: shareBackup, text: shareText },
   notifications: {
     replaceDaily: async (items, requestPermission, progress) => {
       if (items.length) {

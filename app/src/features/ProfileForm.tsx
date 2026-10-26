@@ -1,3 +1,12 @@
+import {
+  usePreferences,
+  weightUnitLabel,
+  weightInput,
+  weightKg,
+  weightValue,
+  waterText,
+  waterUnitLabel,
+} from '../core/preferences';
 import { useState, type FormEvent } from 'react';
 import { ProfileSchema, type UserProfile } from '@racionika/shared';
 import { hasAiConsent, personalPlan, saveAiConsent, saveProfile } from '../core/profile';
@@ -11,6 +20,11 @@ export function ProfileForm({
   onDone: (profile: UserProfile) => void;
   onCancel?: () => void;
 }) {
+  const preferences = usePreferences();
+  const parseWeight = (value: FormDataEntryValue | null, original?: number) =>
+    original !== undefined && String(weightInput(original, preferences)) === String(value)
+      ? original
+      : weightKg(Number(value), preferences);
   const [calorieMode, setCalorieMode] = useState(
     initial?.customCalories !== undefined ? 'custom' : 'automatic',
   );
@@ -28,7 +42,7 @@ export function ProfileForm({
     setError('');
     const data = new FormData(event.currentTarget);
     try {
-      const weight = Number(data.get('weight'));
+      const weight = parseWeight(data.get('weight'), draft?.weight);
       const profile = ProfileSchema.parse({
         version: 1,
         name: data.get('name'),
@@ -38,7 +52,8 @@ export function ProfileForm({
         weight,
         activity: data.get('activity'),
         goal,
-        targetWeight: goal === 'maintain' ? weight : Number(data.get('targetWeight')),
+        targetWeight:
+          goal === 'maintain' ? weight : parseWeight(data.get('targetWeight'), draft?.targetWeight),
         pace:
           goal === 'maintain' || calorieMode === 'custom'
             ? (draft?.pace ?? 0.5)
@@ -139,16 +154,16 @@ export function ProfileForm({
                 />
               </label>
               <label className="field">
-                Вес, кг
+                Вес, {weightUnitLabel(preferences)}
                 <input
                   name="weight"
                   inputMode="decimal"
                   type="number"
-                  min={25}
-                  max={350}
+                  min={Math.ceil(weightValue(25, preferences) * 10) / 10}
+                  max={Math.floor(weightValue(350, preferences) * 10) / 10}
                   step="0.1"
                   required
-                  defaultValue={draft?.weight}
+                  defaultValue={draft ? weightInput(draft.weight, preferences) : undefined}
                 />
               </label>
             </div>
@@ -210,16 +225,16 @@ export function ProfileForm({
             {goal !== 'maintain' && (
               <div className="form-grid">
                 <label className="field">
-                  Целевой вес, кг
+                  Целевой вес, {weightUnitLabel(preferences)}
                   <input
                     name="targetWeight"
                     inputMode="decimal"
                     type="number"
-                    min={25}
-                    max={350}
+                    min={Math.ceil(weightValue(25, preferences) * 10) / 10}
+                    max={Math.floor(weightValue(350, preferences) * 10) / 10}
                     step="0.1"
                     required
-                    defaultValue={draft?.targetWeight}
+                    defaultValue={draft ? weightInput(draft.targetWeight, preferences) : undefined}
                   />
                 </label>
                 {calorieMode === 'automatic' && (
@@ -265,7 +280,10 @@ export function ProfileForm({
                 <p>
                   Белки {plan.protein} г · Жиры {plan.fat} г · Углеводы {plan.carbs} г
                 </p>
-                <p>Вода: {plan.water} мл — ориентир.</p>
+                <p>
+                  Вода: {waterText(plan.water!, preferences)} {waterUnitLabel(preferences)} —
+                  ориентир.
+                </p>
                 {plan.weeks !== null && <p>Расчётный срок: около {plan.weeks} нед.</p>}
                 {plan.source === 'custom' && preview.goal === 'lose' && plan.pace === 0 && (
                   <p>При этой калорийности снижение веса не прогнозируется.</p>

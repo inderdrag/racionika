@@ -1,3 +1,4 @@
+import { usePreferences, waterText, waterUnitLabel, waterValue, waterMl } from './core/preferences';
 import { loadReminderProgress } from './core/notifications/progress';
 import { DiaryMeals } from './features/DiaryMeals';
 import { mealMetadata } from './core/diary';
@@ -22,6 +23,7 @@ import { t } from './core/i18n';
 import { Icon } from './shared/ui/Icon';
 const tabs: Tab[] = ['home', 'diary', 'coach', 'progress', 'settings'];
 export function App() {
+  const preferences = usePreferences();
   const { tab, setTab } = useNavigation();
   const [day, setDay] = useState(localDay());
   const [entries, setEntries] = useState<FoodEntry[]>([]);
@@ -406,18 +408,18 @@ export function App() {
                       <Icon name="drop" size={20} /> Вода
                     </h2>
                     <strong>
-                      {water.toLocaleString('ru-RU')} <small>мл</small>
+                      {waterText(water, preferences)} <small>{waterUnitLabel(preferences)}</small>
                     </strong>
                   </div>
                   <p>
                     {plan?.water
-                      ? `Ориентир: ${plan.water} мл · с учётом жажды`
+                      ? `Ориентир: ${waterText(plan.water, preferences)} ${waterUnitLabel(preferences)} · с учётом жажды`
                       : 'Глоток заботы о себе'}
                   </p>
                   <div className="water-actions">
                     {[150, 200, 250, 500].map((ml) => (
                       <button key={ml} onClick={() => void addWater(ml)}>
-                        +{ml}
+                        +{waterText(ml, preferences)}
                       </button>
                     ))}
                   </div>
@@ -425,7 +427,7 @@ export function App() {
                     className="custom-water"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      const value = Number(customWater);
+                      const value = waterMl(Number(customWater), preferences);
                       if (Number.isInteger(value) && value > 0 && value <= 5000) {
                         void addWater(value);
                         setCustomWater('');
@@ -433,11 +435,12 @@ export function App() {
                     }}
                   >
                     <label className="field">
-                      Свой объём, мл
+                      Свой объём, {waterUnitLabel(preferences)}
                       <input
                         type="number"
-                        min={1}
-                        max={5000}
+                        min={waterValue(1, preferences)}
+                        max={waterValue(5000, preferences)}
+                        step={waterValue(1, preferences)}
                         required
                         value={customWater}
                         onChange={(e) => setCustomWater(e.target.value)}

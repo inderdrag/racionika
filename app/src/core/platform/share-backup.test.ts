@@ -54,3 +54,13 @@ it('при ошибке записи не сообщает об успешном
   await expect(shareBackup('racionika-day.json', {})).rejects.toThrow('disk full');
   expect(mocks.share).not.toHaveBeenCalled();
 });
+it('сохраняет CSV в отдельном файле UTF-8 и не удаляет его до чтения получателем', async () => {
+  const { shareText } = await import('./share-backup');
+  await shareText('../report.csv', '\uFEFF"Блюдо";"ккал"\r\n');
+  expect(mocks.writeFile.mock.calls[0][0]).toMatchObject({
+    data: '\uFEFF"Блюдо";"ккал"\r\n',
+    encoding: 'utf8',
+  });
+  expect(mocks.writeFile.mock.calls[0][0].path).toMatch(/^racionika-exports\/[a-zA-Z0-9_-]+\.csv$/);
+  expect(mocks.deleteFile).not.toHaveBeenCalled();
+});

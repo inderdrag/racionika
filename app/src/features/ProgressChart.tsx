@@ -1,8 +1,15 @@
+import {
+  usePreferences,
+  weightText,
+  weightUnitLabel,
+  waterText,
+  waterUnitLabel,
+} from '../core/preferences';
 import { useId } from 'react';
 import { progressSummary, type ProgressDay } from '../core/progress';
 type Metric = 'weight' | 'calories' | 'water';
 const labels = { weight: 'Вес', calories: 'Калории', water: 'Вода' };
-const units = { weight: 'кг', calories: 'ккал', water: 'мл' };
+
 export function progressNumber(value: number, metric: Metric) {
   return value.toLocaleString('ru-RU', { maximumFractionDigits: metric === 'weight' ? 1 : 0 });
 }
@@ -13,6 +20,12 @@ export function progressDate(day: string) {
   });
 }
 export function ProgressChart({ rows, metric }: { rows: ProgressDay[]; metric: Metric }) {
+  const preferences = usePreferences();
+  const units = {
+    weight: weightUnitLabel(preferences),
+    calories: 'ккал',
+    water: waterUnitLabel(preferences),
+  };
   const id = useId();
   const summary = progressSummary(rows, metric);
   const values = rows.flatMap((row) => (row[metric] === null ? [] : [row[metric]]));
@@ -23,7 +36,12 @@ export function ProgressChart({ rows, metric }: { rows: ProgressDay[]; metric: M
   const max = metric === 'weight' ? highest + pad : Math.max(1, highest * 1.15);
   const x = (index: number) => 64 + (index * 242) / (rows.length - 1);
   const y = (value: number) => 146 - ((value - min) / (max - min)) * 118;
-  const number = (value: number) => progressNumber(value, metric);
+  const number = (value: number) =>
+    metric === 'weight'
+      ? weightText(value, preferences)
+      : metric === 'water'
+        ? waterText(value, preferences)
+        : progressNumber(value, metric);
   return (
     <section className={`card progress-chart progress-${metric}`} aria-labelledby={id}>
       <header className="progress-chart-header">
@@ -88,7 +106,7 @@ export function ProgressChart({ rows, metric }: { rows: ProgressDay[]; metric: M
           {metric === 'weight' && summary.change !== null && (
             <p className="progress-change">
               Изменение: {summary.change > 0 ? '+' : ''}
-              {number(summary.change)} кг
+              {number(summary.change)} {units.weight}
             </p>
           )}
           <details className="progress-values">

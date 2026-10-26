@@ -27,7 +27,10 @@ export interface Platform {
       },
     ) => Promise<{ status: number; data: unknown }>;
   };
-  share: { json: (name: string, value: unknown) => Promise<void> };
+  share: {
+    json: (name: string, value: unknown) => Promise<void>;
+    text: (name: string, text: string, mime: string) => Promise<void>;
+  };
   notifications: {
     replaceDaily: (
       items: DailyReminder[],

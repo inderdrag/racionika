@@ -1,3 +1,5 @@
+import { SettingsExtras } from './SettingsExtras';
+import { PREFERENCES_KEY, usePreferences, weightText, weightUnitLabel } from '../core/preferences';
 import {
   COACH_CONTEXT_KEY,
   hasCoachContextConsent,
@@ -9,7 +11,7 @@ import { db, localDay } from '../core/db';
 import { getPlatform } from '../core/platform';
 import { resetAiSession } from '../core/ai/client';
 import { CONSENT_KEY, hasAiConsent, personalPlan, saveAiConsent } from '../core/profile';
-import { exportBackup, parseBackup, mergeBackup, type Backup } from '../core/backup';
+import { exportBackup, readBackup, mergeBackup, type Backup } from '../core/backup';
 import { NotificationSettings } from './NotificationSettings';
 export function ProfileSettings({
   profile,
@@ -20,6 +22,10 @@ export function ProfileSettings({
   onEdit: () => void;
   onReset: () => void;
 }) {
+  const preferences = usePreferences();
+  const [keepExisting, setKeepExisting] = useState(false);
+  const [restoreProfile, setRestoreProfile] = useState(false);
+  const [restoreSettings, setRestoreSettings] = useState(false);
   const [consent, setConsent] = useState(hasAiConsent);
   const [notice, setNotice] = useState('');
   const [backup, setBackup] = useState<Backup>();
@@ -41,7 +47,8 @@ export function ProfileSettings({
       <section className="card profile-card">
         <h2>{profile.name}</h2>
         <p>
-          {profile.age} лет · {profile.height} см · {profile.weight} кг
+          {profile.age} лет · {profile.height} см · {weightText(profile.weight, preferences)}{' '}
+          {weightUnitLabel(preferences)}
         </p>
         <p>
           {profile.goal === 'lose'
@@ -49,7 +56,9 @@ export function ProfileSettings({
             : profile.goal === 'gain'
               ? 'Набор веса'
               : 'Поддержание веса'}
-          {profile.goal !== 'maintain' ? ` · цель ${profile.targetWeight} кг` : ''}
+          {profile.goal !== 'maintain'
+            ? ` · цель ${weightText(profile.targetWeight, preferences)} ${weightUnitLabel(preferences)}`
+            : ''}
         </p>
 
         <div className="calorie-goal-card">
@@ -94,6 +103,7 @@ export function ProfileSettings({
         </label>
       </section>
       <NotificationSettings />
+      <SettingsExtras />
       <section className="card profile-card">
         <h2>Данные на телефоне</h2>
         <p className="subtle">Резервная копия дневника. Данные хранятся на телефоне.</p>
@@ -122,13 +132,16 @@ export function ProfileSettings({
               e.target.value = '';
               // A failed new selection must never leave an older backup confirmable.
               setBackup(undefined);
+              setRestoreProfile(false);
+              setRestoreSettings(false);
+              setKeepExisting(false);
               setNotice('');
               if (file)
                 void safe(async () => {
                   if (file.size > 20 * 1024 * 1024)
                     throw new Error('Резервная копия больше 20 МБ.');
                   try {
-                    setBackup(parseBackup(await file.text()));
+                    setBackup(await readBackup(await file.text()));
                     setNotice('');
                   } catch {
                     throw new Error(
@@ -151,12 +164,50 @@ export function ProfileSettings({
               Записи объединятся по ID, одинаковые ID обновятся. Профиль, согласие и напоминания не
               заменяются автоматически.
             </p>
+            <p className="subtle">
+              {backup.schemaVersion === 5
+                ? 'Контрольная сумма проверена. Копия не зашифрована.'
+                : 'Старая копия: без контрольной суммы.'}
+            </p>
+            <label className="consent">
+              <input
+                type="checkbox"
+                checked={keepExisting}
+                onChange={(e) => setKeepExisting(e.target.checked)}
+              />
+              <span>При одинаковых ID оставить записи телефона</span>
+            </label>
+            {backup.profile && (
+              <label className="consent">
+                <input
+                  type="checkbox"
+                  checked={restoreProfile}
+                  onChange={(e) => setRestoreProfile(e.target.checked)}
+                />
+                <span>Восстановить профиль: {backup.profile.name}</span>
+              </label>
+            )}
+            {backup.preferences && (
+              <label className="consent">
+                <input
+                  type="checkbox"
+                  checked={restoreSettings}
+                  onChange={(e) => setRestoreSettings(e.target.checked)}
+                />
+                <span>Восстановить единицы, качество ИИ и тему</span>
+              </label>
+            )}
+            <p className="subtle">
+              Согласия, ключи и расписание уведомлений не переносятся. Копия содержит личные данные
+              — храните её в безопасном месте.
+            </p>
             <button
               className="primary"
               disabled={busy}
               onClick={() =>
                 void safe(async () => {
-                  await mergeBackup(backup);
+                  await mergeBackup(backup, { keepExisting, restoreProfile, restoreSettings });
+                  setTheme(localStorage.getItem('racionika.theme') ?? 'system');
                   setBackup(undefined);
                   setNotice(
                     'Записи восстановлены. Повторный импорт не создаёт дублей с тем же ID.',
@@ -207,10 +258,14 @@ export function ProfileSettings({
                 for (const key of [
                   'racionika.profile',
                   'racionika.reminders',
+                  PREFERENCES_KEY,
+                  'racionika.theme',
                   CONSENT_KEY,
                   COACH_CONTEXT_KEY,
                 ])
                   localStorage.removeItem(key);
+                delete document.documentElement.dataset.theme;
+                window.dispatchEvent(new Event('racionika:preferences'));
                 await resetAiSession();
                 onReset();
               });

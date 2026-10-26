@@ -3,16 +3,20 @@ import { Share } from '@capacitor/share';
 const folder = 'racionika-exports';
 const retention = 24 * 60 * 60 * 1000;
 export async function shareBackup(name: string, value: unknown) {
+  return shareText(name.replace(/\.(json|csv)$/i, '') + '.json', JSON.stringify(value, null, 2));
+}
+export async function shareText(name: string, text: string) {
+  const extension = name.toLowerCase().endsWith('.csv') ? 'csv' : 'json';
   // Android's share callback can resolve before the receiver reads the file.
   // Keep a unique private cache copy; never delete it immediately after Share.share.
   const stem = name
-    .replace(/\.json$/i, '')
+    .replace(/\.(json|csv)$/i, '')
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .slice(0, 80);
-  const path = `${folder}/${stem}-${crypto.randomUUID()}.json`;
+  const path = `${folder}/${stem}-${crypto.randomUUID()}.${extension}`;
   const file = await Filesystem.writeFile({
     path,
-    data: JSON.stringify(value, null, 2),
+    data: text,
     directory: Directory.Cache,
     encoding: Encoding.UTF8,
     recursive: true,
@@ -22,7 +26,7 @@ export async function shareBackup(name: string, value: unknown) {
     for (const item of files) {
       if (
         item.type === 'file' &&
-        /^[a-zA-Z0-9_-]+\.json$/.test(item.name) &&
+        /^[a-zA-Z0-9_-]+\.(json|csv)$/.test(item.name) &&
         `${folder}/${item.name}` !== path &&
         item.mtime > 0 &&
         item.mtime < Date.now() - retention

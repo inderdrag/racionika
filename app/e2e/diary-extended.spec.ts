@@ -130,7 +130,7 @@ test('детали и избранное сохраняются в экспор�
   const { readFile } = await import('node:fs/promises');
   const bytes = await readFile((await file.path())!);
   const data = JSON.parse(bytes.toString());
-  expect(data.schemaVersion).toBe(4);
+  expect(data.schemaVersion).toBe(5);
   expect(data.favoriteDishes).toHaveLength(1);
   expect(data.foodEntries[0].mealType).toBe('breakfast');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();

@@ -75,6 +75,7 @@ test('можно отключить повтор и учёт нормы неза
     .getByLabel('Не напоминать после выполнения нормы еды или воды', { exact: true })
     .uncheck();
   await page.getByRole('button', { name: 'Сохранить напоминания', exact: true }).click();
+  await expect(page.locator('.notification-settings .notice')).toContainText('Сохранено.');
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('racionika.reminders')!),
   );

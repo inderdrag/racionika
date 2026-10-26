@@ -52,7 +52,7 @@ test('без сети доступны ручной дневник, вода и 
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
   await page.getByLabel('Вес сегодня, кг').fill('79.2');
   await page.getByRole('button', { name: 'Сохранить вес', exact: true }).click();
-  await expect(page.locator('.weight-history')).toContainText('79.2 кг');
+  await expect(page.locator('.weight-history')).toContainText('79,2 кг');
   await context.setOffline(false); // Browser shell needs HTTP, unlike assets bundled in APK.
   await page.route('**/v1/**', (route) => route.abort());
   await page.reload();
@@ -119,7 +119,7 @@ test('JSON-экспорт восстанавливает еду, воду и в�
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
   await page.getByLabel('Вес сегодня, кг').fill('79.5');
   await page.getByRole('button', { name: 'Сохранить вес', exact: true }).click();
-  await expect(page.locator('.weight-history')).toContainText('79.5 кг');
+  await expect(page.locator('.weight-history')).toContainText('79,5 кг');
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Экспортировать JSON' }).click();
@@ -154,7 +154,7 @@ test('JSON-экспорт восстанавливает еду, воду и в�
     await other.getByRole('button', { name: 'Главная', exact: true }).click();
     await expect(other.locator('.water .section-head > strong')).toHaveText('200 мл');
     await other.getByRole('button', { name: 'Прогресс', exact: true }).click();
-    await expect(other.locator('.weight-history')).toContainText('79.5 кг');
+    await expect(other.locator('.weight-history')).toContainText('79,5 кг');
     await other.getByRole('button', { name: 'Профиль', exact: true }).click();
     await other.getByText('Разрешения приложения', { exact: true }).click();
     await expect(other.getByLabel('Использовать ИИ', { exact: true })).not.toBeChecked();

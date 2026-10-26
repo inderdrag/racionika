@@ -1,3 +1,4 @@
+import { loadPreferences } from '../../core/preferences';
 import { mealMetadata, mealTypes } from '../../core/diary';
 import { hasAiConsent } from '../../core/profile';
 import { useEffect, useRef, useState } from 'react';
@@ -35,7 +36,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
   const [text, setText] = useState('');
   const [hint, setHint] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
-  const [quality, setQuality] = useState<Quality>('fast');
+  const [quality, setQuality] = useState<Quality>(() => loadPreferences().quality);
   const [config, setConfig] = useState<PublicConfig>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);

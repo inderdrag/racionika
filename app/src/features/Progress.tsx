@@ -1,3 +1,13 @@
+import {
+  usePreferences,
+  weightText,
+  weightInput,
+  weightKg,
+  weightValue,
+  weightUnitLabel,
+  waterText,
+  waterUnitLabel,
+} from '../core/preferences';
 import { useEffect, useState, type FormEvent } from 'react';
 import { liveQuery } from 'dexie';
 import { db, localDay, type FoodEntry, type WaterLog, type WeightLog } from '../core/db';
@@ -13,13 +23,14 @@ import {
 import { ProgressChart } from './ProgressChart';
 import type { UserProfile } from '@racionika/shared';
 export function Progress({ profile }: { profile: UserProfile }) {
+  const preferences = usePreferences();
   const [weights, setWeights] = useState<WeightLog[]>([]);
   const [food, setFood] = useState<FoodEntry[]>([]);
   const [water, setWater] = useState<WaterLog[]>([]);
   const [today, setToday] = useState(localDay());
   const [period, setPeriod] = useState<ProgressPeriod>(7);
   const [day, setDay] = useState(today);
-  const [kg, setKg] = useState(String(profile.weight));
+  const [kg, setKg] = useState(String(weightInput(profile.weight, preferences)));
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -56,7 +67,7 @@ export function Progress({ profile }: { profile: UserProfile }) {
   }, [today]);
   async function save(event: FormEvent) {
     event.preventDefault();
-    const value = Number(kg);
+    const value = weightKg(Number(kg), preferences);
     if (!validDiaryDay(day) || day > localDay()) {
       setNotice('Выберите дату не позднее сегодняшней.');
       return;
@@ -122,12 +133,15 @@ export function Progress({ profile }: { profile: UserProfile }) {
       <section className="card profile-card">
         <h2>Мой вес</h2>
         <p>
-          Последняя запись: <strong>{last?.kg ?? profile.weight} кг</strong>
+          Последняя запись:{' '}
+          <strong>
+            {weightText(last?.kg ?? profile.weight, preferences)} {weightUnitLabel(preferences)}
+          </strong>
         </p>
         <p className="subtle">
           {profile.goal === 'maintain'
             ? 'Цель — поддерживать вес'
-            : `Целевой вес: ${profile.targetWeight} кг`}
+            : `Целевой вес: ${weightText(profile.targetWeight, preferences)} ${weightUnitLabel(preferences)}`}
         </p>
         <form onSubmit={(event) => void save(event)}>
           <div className="form-grid">
@@ -142,13 +156,13 @@ export function Progress({ profile }: { profile: UserProfile }) {
               />
             </label>
             <label className="field">
-              Вес сегодня, кг
+              Вес сегодня, {weightUnitLabel(preferences)}
               <input
                 inputMode="decimal"
                 type="number"
                 required
-                min={25}
-                max={350}
+                min={Math.ceil(weightValue(25, preferences) * 10) / 10}
+                max={Math.floor(weightValue(350, preferences) * 10) / 10}
                 step="0.1"
                 value={kg}
                 onChange={(e) => setKg(e.target.value)}
@@ -164,7 +178,9 @@ export function Progress({ profile }: { profile: UserProfile }) {
         <section className="card profile-card weight-plan" aria-label="Пересчёт по новому весу">
           <h2>Обновить норму?</h2>
           <p>
-            В профиле {profile.weight} кг → новое взвешивание {proposal.measurement.kg} кг.
+            В профиле {weightText(profile.weight, preferences)} {weightUnitLabel(preferences)} →
+            новое взвешивание {weightText(proposal.measurement.kg, preferences)}{' '}
+            {weightUnitLabel(preferences)}.
           </p>
           {proposal.next.status === 'ready' ? (
             preview ? (
@@ -177,7 +193,10 @@ export function Progress({ profile }: { profile: UserProfile }) {
                   <p>
                     Б {preview.next.protein} г · Ж {preview.next.fat} г · У {preview.next.carbs} г
                   </p>
-                  <p>Вода: {preview.next.water} мл</p>
+                  <p>
+                    Вода: {waterText(preview.next.water!, preferences)}{' '}
+                    {waterUnitLabel(preferences)}
+                  </p>
                 </div>
                 <p className="subtle">
                   {profile.customCalories !== undefined
@@ -243,7 +262,9 @@ export function Progress({ profile }: { profile: UserProfile }) {
                 .map((item) => (
                   <li key={item.id}>
                     <span>{new Date(`${item.day}T12:00:00`).toLocaleDateString('ru-RU')}</span>
-                    <strong>{item.kg} кг</strong>
+                    <strong>
+                      {weightText(item.kg, preferences)} {weightUnitLabel(preferences)}
+                    </strong>
                     <button
                       className="delete"
                       aria-label={`Удалить вес за ${item.day}`}

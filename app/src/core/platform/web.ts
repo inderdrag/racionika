@@ -52,6 +52,14 @@ export const webPlatform: Platform = {
     },
   },
   share: {
+    text: async (name, text, mime) => {
+      const url = URL.createObjectURL(new Blob([text], { type: mime }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    },
     json: async (name, value) => {
       const url = URL.createObjectURL(
         new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }),

@@ -131,10 +131,10 @@ test('запись веса и профиль сохраняются после 
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
   await page.getByLabel('Вес сегодня, кг').fill('79.5');
   await page.getByRole('button', { name: 'Сохранить вес', exact: true }).click();
-  await expect(page.locator('.weight-history')).toContainText('79.5 кг');
+  await expect(page.locator('.weight-history')).toContainText('79,5 кг');
   await page.reload();
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
-  await expect(page.locator('.weight-history')).toContainText('79.5 кг');
+  await expect(page.locator('.weight-history')).toContainText('79,5 кг');
 });
 test('цель калорий заметна в Профиле, пересчитывается и сохраняется на Главной', async ({
   page,

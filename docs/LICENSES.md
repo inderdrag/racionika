@@ -1,7 +1,34 @@
 # Лицензии
 
-Manrope: SIL Open Font License, Copyright 2018 The Manrope Project Authors.
-Лицензии npm-зависимостей поставляются в node_modules; полный production inventory пока не сформирован.
+## В приложении
+
+Профиль → «О приложении и лицензии». Полные тексты лицензий 25 установленных
+runtime-пакетов JavaScript/Capacitor (включая транзитивные npm-зависимости)
+поставляются офлайн в `app/src/data/licenses.json`. Это не лицензия на
+саму Рационику и не инвентаризация серверных или build/dev-зависимостей.
+
+Воспроизводимость: `node scripts/licenses.mjs`, затем
+`npx --no-install prettier --write app/src/data/licenses.json`. Скрипт обходит
+`dependencies` приложения, сохраняет фактические LICENSE/NOTICE/OFL из
+установленных пакетов и останавливается, если текст лицензии не найден.
+При обновлении зависимостей inventory нужно пересоздать.
+
+Нативный APK также содержит AndroidX (Apache-2.0), Kotlin (Apache-2.0),
+Apache Cordova (Apache-2.0) и нативные части Capacitor (MIT).
+Фактические версии зависят от Gradle-resolve. Для проверки используйте
+`:app:dependencies --configuration releaseRuntimeClasspath`; это отдельный
+слой от npm inventory. Нельзя объявлять npm-список полным списком всех
+AAR/JAR внутри APK. При публичном распространении нужно сверить также
+транзитивные Gradle-зависимости и их NOTICE.
+
+Данные USDA FoodData Central SR Legacy 2018 — общественное достояние.
+Источник: https://fdc.nal.usda.gov/ . Русские названия локализованы.
+Open Food Facts: ODbL 1.0 (база), Database Contents License (отдельное
+содержимое), CC BY-SA 3.0 (фотографии, в приложении не используются).
+Условия: https://world.openfoodfacts.org/terms-of-use .
+Подробнее о наборе: `docs/FOOD_CATALOG.md`.
+
+Manrope: SIL Open Font License, Copyright 2019 The Manrope Project Authors.
 
 ## Manrope — полный текст OFL
 
