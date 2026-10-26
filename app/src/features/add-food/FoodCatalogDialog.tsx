@@ -1,3 +1,4 @@
+import { useDialogFocus } from '../../shared/ui/useDialogFocus';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { catalog, catalogCategories, searchCatalog } from '../../core/catalog';
 import { formLabels, type CatalogProduct } from '../../core/catalog/types';
@@ -20,6 +21,7 @@ export function FoodCatalogDialog({
   onSaved: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  useDialogFocus(dialog);
   const controller = useRef<AbortController | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');

@@ -47,7 +47,6 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  color-scheme: light dark;
   --bg: #f5f8f5;
   --surface: #fff;
   --surface-soft: #eaf3ee;

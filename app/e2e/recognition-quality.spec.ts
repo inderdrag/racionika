@@ -63,6 +63,8 @@ test('этикетка сохраняет ккал, не переписывае�
   await expect(page.locator('.analysis-check')).toContainText('значения не изменены');
   await page.getByLabel('Приём пищи для блюда').selectOption('snack');
   await page.getByRole('button', { name: 'Сохранить блюдо', exact: true }).click();
+  // Reload only after the async IndexedDB commit and dialog close acknowledge saving.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('.calorie-orbit strong')).toHaveText('81');
 });

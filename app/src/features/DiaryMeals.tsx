@@ -1,3 +1,4 @@
+import { useDialogFocus } from '../shared/ui/useDialogFocus';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { liveQuery } from 'dexie';
 import { db, type FavoriteDish, type FoodEntry, type MealType } from '../core/db';
@@ -299,6 +300,7 @@ function EntryDetails({
 }) {
   const { entry, mode } = editor;
   const dialog = useRef<HTMLDialogElement>(null);
+  useDialogFocus(dialog);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {

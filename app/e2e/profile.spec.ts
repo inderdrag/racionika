@@ -1,4 +1,18 @@
 import { test, expect } from '@playwright/test';
+// UI tests do not consume the shared server configuration request quota.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/v1/config', (route) =>
+    route.fulfill({
+      json: {
+        mode: 'demo',
+        provider: 'anymodel',
+        access_code_required: false,
+        min_app_version: '0.2.0',
+        maintenance: false,
+      },
+    }),
+  );
+});
 async function register(page: import('@playwright/test').Page, consent = true) {
   await page.goto('/');
   await page.getByLabel('Имя', { exact: true }).fill('Алекс');

@@ -1,3 +1,4 @@
+import { useDialogFocus } from '../../shared/ui/useDialogFocus';
 import { loadPreferences } from '../../core/preferences';
 import { mealMetadata, mealTypes } from '../../core/diary';
 import { hasAiConsent } from '../../core/profile';
@@ -31,6 +32,7 @@ interface Props {
 }
 export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSaved }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
+  useDialogFocus(dialog);
   const controller = useRef<AbortController | null>(null);
   const [mode, setMode] = useState<'text' | 'photo'>('text');
   const [text, setText] = useState('');
@@ -361,7 +363,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
           {demo && <p className="subtle">ДЕМО: эта запись не описывает вашу реальную еду.</p>}
           {!result.is_food ? (
             <>
-              <p className="error">
+              <p className="error" role="alert">
                 На изображении не распознана еда. Попробуйте другое фото или текстовое описание.
               </p>
               <button className="secondary" onClick={() => setResult(undefined)}>

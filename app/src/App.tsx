@@ -1,3 +1,4 @@
+import { useDialogFocus } from './shared/ui/useDialogFocus';
 import { usePreferences, waterText, waterUnitLabel, waterValue, waterMl } from './core/preferences';
 import { loadReminderProgress } from './core/notifications/progress';
 import { DiaryMeals } from './features/DiaryMeals';
@@ -251,12 +252,23 @@ export function App() {
           setProfile(value);
           setEditingProfile(false);
           window.scrollTo(0, 0);
+          requestAnimationFrame(() => document.getElementById('page-title')?.focus());
         }}
-        onCancel={editingProfile ? () => setEditingProfile(false) : undefined}
+        onCancel={
+          editingProfile
+            ? () => {
+                setEditingProfile(false);
+                requestAnimationFrame(() => document.getElementById('page-title')?.focus());
+              }
+            : undefined
+        }
       />
     );
   return (
     <div className="desktop">
+      <a className="skip-link" href="#main-content">
+        К содержимому
+      </a>
       <aside className="desktop-note">
         <div className="wordmark">
           <Icon name="leaf" size={36} />
@@ -292,10 +304,10 @@ export function App() {
           </span>
           <span className="local-badge">На телефоне</span>
         </header>
-        <main>
+        <main id="main-content" tabIndex={-1} aria-labelledby="page-title">
           <div className="page-title">
             <p className="eyebrow">{profile.name}, ВАШ СПОКОЙНЫЙ РИТМ</p>
-            <h1>
+            <h1 id="page-title" tabIndex={-1}>
               {tab === 'home'
                 ? 'Хороший день для себя'
                 : tab === 'diary'
@@ -504,12 +516,15 @@ export function App() {
               key={item}
               aria-label={t(item)}
               aria-current={tab === item ? 'page' : undefined}
-              onClick={() => setTab(item)}
+              onClick={() => {
+                setTab(item);
+                requestAnimationFrame(() => document.getElementById('page-title')?.focus());
+              }}
             >
               <span>
                 <Icon name={item} />
               </span>
-              {item === 'coach' ? 'ИИ' : t(item)}
+              <span className="nav-label">{item === 'coach' ? 'ИИ' : t(item)}</span>
             </button>
           ))}
         </nav>
@@ -556,6 +571,7 @@ function FoodDialog({
   onSaved: (corrected: boolean) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  useDialogFocus(dialog);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
