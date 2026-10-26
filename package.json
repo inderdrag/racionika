@@ -17,7 +17,7 @@
     "dev:server": "npm run build -w @racionika/shared && npm run dev -w @racionika/server",
     "build": "npm run build -w @racionika/shared && npm run build -w @racionika/app && npm run build -w @racionika/server",
     "typecheck": "npm run typecheck --workspaces",
-    "test": "vitest run && node --test scripts/android-config.test.mjs scripts/dependency-smoke.test.mjs",
+    "test": "vitest run && node --test scripts/android-config.test.mjs scripts/android-signing.test.mjs scripts/android-release-command.test.mjs scripts/dependency-smoke.test.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
@@ -29,7 +29,8 @@
     "test:e2e:local": "playwright test --config=playwright.local.config.ts",
     "dev:demo": "node scripts/start-demo.mjs",
     "test:e2e:built": "playwright test --config=playwright.built.config.ts",
-    "build:server": "npm run build -w @racionika/shared && npm run build -w @racionika/server"
+    "build:server": "npm run build -w @racionika/shared && npm run build -w @racionika/server",
+    "apk:release": "npm run apk:release -w @racionika/app"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
