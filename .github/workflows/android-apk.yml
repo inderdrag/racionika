@@ -43,6 +43,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Cache Gradle dependency downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-deps-v1-${{ hashFiles('package-lock.json', 'app/android/**/*.gradle', 'scripts/gradle-repositories.init.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-deps-v1-
       - uses: android-actions/setup-android@v3
         with:
           # Default includes obsolete 'tools', which is no longer available.
