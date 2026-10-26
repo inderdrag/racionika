@@ -49,6 +49,8 @@ export function Coach({ day, profile }: { day: string; profile: UserProfile }) {
     [streamed, setStreamed] = useState(false);
   const abort = useRef<AbortController | null>(null),
     mounted = useRef(true);
+  const historyRef = useRef<HTMLDivElement>(null);
+  const followTail = useRef(true);
   const range = coachWindow(day, localDay(), extended);
   useEffect(() => {
     mounted.current = true;
@@ -85,12 +87,18 @@ export function Coach({ day, profile }: { day: string; profile: UserProfile }) {
   useEffect(() => {
     abort.current?.abort();
   }, [day, profile.updatedAt]);
+  useEffect(() => {
+    const history = historyRef.current;
+    // Follow incoming text only while the reader is at the end. Never scroll the page.
+    if (history && followTail.current) history.scrollTop = history.scrollHeight;
+  }, [messages, partial, pending, busy, error, stopped]);
   async function send(event: FormEvent) {
     event.preventDefault();
     if (!text.trim() || !hasAiConsent() || busy) return;
     const question = text.trim(),
       controller = new AbortController();
     abort.current = controller;
+    followTail.current = true;
     setBusy(true);
     setError('');
     setPartial('');
@@ -203,7 +211,17 @@ export function Coach({ day, profile }: { day: string; profile: UserProfile }) {
           </button>
         </details>
       )}
-      <div className="chat-history">
+      <div
+        className="chat-history"
+        ref={historyRef}
+        role="region"
+        aria-label="Переписка с наставником"
+        tabIndex={0}
+        onScroll={(event) => {
+          const el = event.currentTarget;
+          followTail.current = el.scrollHeight - el.scrollTop - el.clientHeight < 64;
+        }}
+      >
         {messages.map((m) => (
           <div key={m.id} className={`chat-message ${m.role}`}>
             <strong>{m.role === 'user' ? 'Вы' : m.demo ? 'Демо-наставник' : 'Наставник'}</strong>
@@ -231,6 +249,16 @@ export function Coach({ day, profile }: { day: string; profile: UserProfile }) {
               {stopped ? 'Запрос остановлен.' : busy ? 'Ответ поступает.' : 'Ответ получен.'}
             </span>
           </div>
+        )}
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        {!busy && stopped && (
+          <p className="coach-stop-note" role="status">
+            Запрос остановлен. Неполный ответ не сохранён в историю.
+          </p>
         )}
       </div>
       <div className="coach-quick-actions" role="group" aria-label="Задача наставника">
@@ -268,18 +296,15 @@ export function Coach({ day, profile }: { day: string; profile: UserProfile }) {
             Включите ИИ в Профиле. Повторное согласие в каждом сообщении не требуется.
           </p>
         )}
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
         <button
           className="primary"
           disabled={busy || !consent || !text.trim() || !config || config.mode === 'disabled'}
         >
           {busy ? 'Ждём ответ…' : 'Отправить'}
         </button>
-        {busy && (
+      </form>
+      <div className="coach-chat-tools">
+        {busy ? (
           <button
             type="button"
             className="text-button coach-cancel"
@@ -290,22 +315,20 @@ export function Coach({ day, profile }: { day: string; profile: UserProfile }) {
           >
             Остановить ответ
           </button>
+        ) : (
+          <button
+            type="button"
+            className="text-button"
+            disabled={messages.length === 0}
+            onClick={() => {
+              followTail.current = true;
+              void db.chatMessages.clear();
+            }}
+          >
+            Очистить историю
+          </button>
         )}
-        {!busy && stopped && (
-          <p className="coach-stop-note" role="status">
-            Запрос остановлен. Неполный ответ не сохранён в историю.
-          </p>
-        )}
-      </form>
-      {messages.length > 0 && (
-        <button
-          className="text-button"
-          disabled={busy}
-          onClick={() => void db.chatMessages.clear()}
-        >
-          Очистить историю
-        </button>
-      )}
+      </div>
     </section>
   );
 }

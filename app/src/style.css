@@ -938,9 +938,28 @@ dialog > .subtle {
   margin-top: 16px;
 }
 .chat-history {
-  display: grid;
+  /* Content-independent size: new turns and streamed tokens never grow the page. */
+  height: clamp(15rem, 42dvh, 28rem);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   margin: 20px 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.chat-history > * {
+  flex-shrink: 0;
+}
+.chat-history:focus-visible {
+  outline: 3px solid var(--water);
+  outline-offset: 3px;
 }
 .chat-message {
   padding: 14px;
@@ -956,7 +975,11 @@ dialog > .subtle {
   margin-bottom: 0;
 }
 .coach-card textarea {
-  min-height: 100px;
+  height: 6.25rem;
+  min-height: 6.25rem;
+  max-height: 6.25rem;
+  resize: none;
+  overflow-y: auto;
 }
 .coach-card label {
   display: block;
@@ -1932,4 +1955,16 @@ input[type='time']::-webkit-datetime-edit {
 :root[data-native='true'] .bottom-nav {
   position: sticky;
   bottom: 0;
+}
+
+/* Reserve one control row so waiting/cancel/clear do not resize the card. */
+.coach-chat-tools {
+  height: 3.75rem;
+  margin-top: 8px;
+}
+.coach-chat-tools > button {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  line-height: 1.4;
 }
