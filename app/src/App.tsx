@@ -1,3 +1,4 @@
+import { loadReminderProgress } from './core/notifications/progress';
 import { DiaryMeals } from './features/DiaryMeals';
 import { mealMetadata } from './core/diary';
 import { loadProfile, personalPlan } from './core/profile';
@@ -108,12 +109,58 @@ export function App() {
   }, []);
   const hasProfile = Boolean(profile);
   useEffect(() => {
+    if (!profile) return;
+    let disposed = false;
+    let queue = Promise.resolve();
+    let generation = 0;
+    let subscription: { unsubscribe: () => void } | undefined;
+    const watch = () => {
+      const current = ++generation;
+      subscription?.unsubscribe();
+      subscription = liveQuery(() => loadReminderProgress(profile)).subscribe({
+        next: (progress) => {
+          // A restarted query invalidates its earlier pending bridge snapshots.
+          queue = queue
+            .then(async () => {
+              if (!disposed && current === generation)
+                await (await getPlatform()).notifications.syncProgress(progress);
+            })
+            .catch(() => {
+              if (!disposed)
+                setNotice(
+                  'Не удалось обновить напоминания по дневнику. Откройте настройки напоминаний.',
+                );
+            });
+        },
+        error: () => {
+          if (!disposed) setNotice('Не удалось обновить данные для напоминаний.');
+        },
+      });
+    };
+    watch();
+    const refresh = () => {
+      if (document.visibilityState === 'visible') watch();
+    };
+    document.addEventListener('visibilitychange', refresh);
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      disposed = true;
+      subscription?.unsubscribe();
+      document.removeEventListener('visibilitychange', refresh);
+      clearInterval(timer);
+    };
+  }, [profile]);
+  useEffect(() => {
     if (!hasProfile) return;
     let disposed = false;
     let cleanup: (() => void) | undefined;
     const reschedule = () => {
       void getPlatform()
-        .then((p) => p.notifications.replaceDaily(reminderPlan(loadReminders()), false))
+        .then(async (p) => {
+          const current = loadProfile();
+          const progress = current ? await loadReminderProgress(current) : undefined;
+          return p.notifications.replaceDaily(reminderPlan(loadReminders()), false, progress);
+        })
         .catch(() => {
           if (!disposed)
             setNotice('Проверьте напоминания в Профиле: Android мог изменить разрешения.');

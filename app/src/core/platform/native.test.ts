@@ -10,6 +10,16 @@ const mocks = vi.hoisted(() => ({
   getPhoto: vi.fn(),
   addListener: vi.fn(),
   exitApp: vi.fn(),
+  configure: vi.fn(),
+  syncProgress: vi.fn(),
+  nativeListener: vi.fn(),
+}));
+vi.mock('../notifications/native-reminders', () => ({
+  NativeReminders: {
+    configure: mocks.configure,
+    syncProgress: mocks.syncProgress,
+    addListener: mocks.nativeListener,
+  },
 }));
 vi.mock('@capacitor/local-notifications', () => ({ LocalNotifications: mocks }));
 vi.mock('@capacitor/camera', () => ({
@@ -44,6 +54,9 @@ beforeEach(() => {
   mocks.getAll.mockResolvedValue({ notifications: [old, { id: 5, title: 'Не наше' }] });
   mocks.cancel.mockResolvedValue(undefined);
   mocks.schedule.mockResolvedValue(undefined);
+  mocks.configure.mockResolvedValue(undefined);
+  mocks.syncProgress.mockResolvedValue(undefined);
+  mocks.nativeListener.mockResolvedValue({ remove: vi.fn() });
 });
 describe('Нативное расписание (подставной Android API)', () => {
   it('при отказе разрешения сохраняет старые будильники', async () => {
@@ -58,24 +71,21 @@ describe('Нативное расписание (подставной Android AP
     await nativePlatform.notifications.replaceDaily([item], false);
     expect(mocks.requestPermissions).not.toHaveBeenCalled();
     expect(mocks.cancel).toHaveBeenCalledWith({ notifications: [{ id: old.id }] });
-    expect(mocks.schedule.mock.calls[0][0].notifications[0]).toMatchObject({
-      id: item.id,
-      isExactNotification: false,
-      extra: { route: 'diary' },
-      schedule: { on: { hour: 8, minute: 0 }, repeats: true, allowWhileIdle: true },
-    });
+    expect(mocks.configure).toHaveBeenCalledWith({ items: [item] });
+    expect(mocks.schedule).not.toHaveBeenCalled();
   });
-  it('восстанавливает предыдущее расписание при ошибке записи нового', async () => {
-    mocks.schedule.mockRejectedValueOnce(new Error('Android error'));
+  it('при сбое нативного расписания не удаляет прежние Capacitor-будильники', async () => {
+    mocks.configure.mockRejectedValueOnce(new Error('Storage failed'));
     await expect(nativePlatform.notifications.replaceDaily([item], true)).rejects.toThrow(
-      'восстановлено',
+      'Storage failed',
     );
-    expect(mocks.schedule).toHaveBeenLastCalledWith({ notifications: [old] });
+    expect(mocks.cancel).not.toHaveBeenCalled();
   });
   it('отключает уведомления без нового запроса разрешения', async () => {
     await nativePlatform.notifications.replaceDaily([], false);
     expect(mocks.requestPermissions).not.toHaveBeenCalled();
     expect(mocks.schedule).not.toHaveBeenCalled();
+    expect(mocks.configure).toHaveBeenCalledWith({ items: [] });
     expect(mocks.cancel).toHaveBeenCalledWith({ notifications: [{ id: old.id }] });
   });
 });

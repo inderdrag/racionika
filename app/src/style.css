@@ -1638,3 +1638,54 @@ select {
 .coach-live {
   border: 1px solid var(--accent);
 }
+
+.reminder-days {
+  border: 0;
+  padding: 0;
+  margin: 20px 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.reminder-days legend {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.reminder-days label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  min-height: 60px;
+  padding: 4px 0;
+}
+.reminder-days input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+.reminder-time-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.reminder-time-row .field {
+  flex: 1;
+  min-width: 0;
+}
+.reminder-time-row button {
+  min-height: 48px;
+}
+.notification-check {
+  margin-top: 20px;
+}
+.notification-check summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+  color: var(--accent);
+}
+.notification-check .secondary {
+  width: 100%;
+}

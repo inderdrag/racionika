@@ -1,3 +1,4 @@
+import { NativeReminders } from '../notifications/native-reminders';
 import { CapacitorHttp } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { shareBackup } from './share-backup';
@@ -81,7 +82,7 @@ export const nativePlatform: Platform = {
   },
   share: { json: shareBackup },
   notifications: {
-    replaceDaily: async (items, requestPermission) => {
+    replaceDaily: async (items, requestPermission, progress) => {
       if (items.length) {
         const permission = requestPermission
           ? await LocalNotifications.requestPermissions()
@@ -90,51 +91,37 @@ export const nativePlatform: Platform = {
       }
       const exact =
         (await LocalNotifications.checkExactNotificationSetting()).exact_alarm === 'granted';
-      for (const [id, name] of [
-        ['meals', 'Питание'],
-        ['water', 'Вода'],
-        ['motivation', 'Поддержка'],
-      ])
-        await LocalNotifications.createChannel({ id, name, importance: 3 });
+      // Migrate only our former Capacitor alarms. The persistent native scheduler now
+      // owns recurrence, reboot recovery, quiet hours and conditional meal follow-ups.
       const pending = (
         await LocalNotifications.getAll({ state: 'SCHEDULED' })
       ).notifications.filter((item) => item.id >= 10000 && item.id < 40000);
-      if (pending.length)
-        await LocalNotifications.cancel({ notifications: pending.map(({ id }) => ({ id })) });
+      await NativeReminders.configure({ items, ...(progress ? { progress } : {}) });
       try {
-        if (items.length)
-          await LocalNotifications.schedule({
-            notifications: items.map((item) => ({
-              id: item.id,
-              title: item.title,
-              body: item.body,
-              channelId: item.channel,
-              isExactNotification: exact,
-              schedule: {
-                on: {
-                  hour: item.hour,
-                  minute: item.minute,
-                  ...(item.weekday ? { weekday: item.weekday } : {}),
-                },
-                repeats: true,
-                allowWhileIdle: true,
-              },
-              extra: { route: item.route },
-            })),
-          });
+        if (pending.length)
+          await LocalNotifications.cancel({ notifications: pending.map(({ id }) => ({ id })) });
       } catch {
-        // A failed replacement must not silently remove the previous schedule.
-        try {
-          await LocalNotifications.cancel({ notifications: items.map(({ id }) => ({ id })) });
-          if (pending.length) await LocalNotifications.schedule({ notifications: pending });
-        } catch {
-          throw new Error('Не удалось восстановить напоминания. Сохраните расписание ещё раз.');
-        }
-        throw new Error('Не удалось изменить напоминания. Предыдущее расписание восстановлено.');
+        await NativeReminders.configure({ items: [] });
+        throw new Error('Не удалось убрать старое расписание. Сохраните напоминания ещё раз.');
       }
       return { granted: true, exact };
     },
+    testDelivery: async () => {
+      const permission = await LocalNotifications.requestPermissions();
+      if (permission.display !== 'granted')
+        return { granted: false, exact: false, batterySaving: false, restricted: false };
+      const exact =
+        (await LocalNotifications.checkExactNotificationSetting()).exact_alarm === 'granted';
+      const status = await NativeReminders.testDelivery();
+      return { granted: true, exact, ...status };
+    },
+    syncProgress: async (progress) => {
+      await NativeReminders.syncProgress(progress);
+    },
     listen: async (onAction) => {
+      const nativeListener = await NativeReminders.addListener('action', ({ route }) => {
+        if (['home', 'diary', 'coach', 'progress', 'settings'].includes(route)) onAction(route);
+      });
       const listener = await LocalNotifications.addListener(
         'localNotificationActionPerformed',
         (event) => {
@@ -144,6 +131,7 @@ export const nativePlatform: Platform = {
       );
       return () => {
         void listener.remove();
+        void nativeListener.remove();
       };
     },
     openExactSettings: async () => {

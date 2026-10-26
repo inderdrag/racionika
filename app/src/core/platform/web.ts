@@ -65,6 +65,10 @@ export const webPlatform: Platform = {
   },
   // Только пока открыта вкладка. Это НЕ фоновые напоминания Android.
   notifications: {
+    testDelivery: async () => {
+      throw new Error('Проверка закрытого приложения доступна только на Android.');
+    },
+    syncProgress: async () => {},
     replaceDaily: async (items, requestPermission) => {
       if (
         items.length &&
@@ -84,8 +88,11 @@ export const webPlatform: Platform = {
             next = new Date();
           next.setHours(item.hour, item.minute, 0, 0);
           if (next <= now) next.setDate(next.getDate() + 1);
-          if (item.weekday)
-            while (next.getDay() + 1 !== item.weekday) next.setDate(next.getDate() + 1);
+          while (
+            (item.weekday && next.getDay() + 1 !== item.weekday) ||
+            (item.days && !item.days.includes(((next.getDay() + 6) % 7) + 1))
+          )
+            next.setDate(next.getDate() + 1);
           timers.set(
             item.id,
             setTimeout(() => {

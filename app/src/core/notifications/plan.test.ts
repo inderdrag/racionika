@@ -52,3 +52,52 @@ describe('Напоминания и тихие часы', () => {
     }
   });
 });
+
+describe('Гибкое расписание', () => {
+  it('мигрирует старые настройки без потери интервалов', async () => {
+    const { ReminderSettingsSchema } = await import('./plan');
+    const old = {
+      meals: true,
+      mealHours: 4,
+      water: true,
+      waterMinutes: 90,
+      motivation: false,
+      motivationTime: '11:00',
+      wake: '07:00',
+      sleep: '23:00',
+    };
+    const s = ReminderSettingsSchema.parse(old);
+    expect(s.days).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(s.mealFollowups).toBe(true);
+    expect(s.mealHours).toBe(4);
+    expect(s.mealMode).toBe('interval');
+  });
+  it('в выбранные дни задаёт конкретные часы и не дублирует одинаковые', () => {
+    const p = reminderPlan({
+      ...defaultReminders,
+      meals: true,
+      mealMode: 'times',
+      mealTimes: ['18:00', '08:30', '13:00', '13:00'],
+      days: [1, 3, 5],
+    });
+    expect(p.map((x) => [x.hour, x.minute])).toEqual([
+      [8, 30],
+      [13, 0],
+      [18, 0],
+    ]);
+    expect(p.every((x) => x.followups && x.stopWhenGoal && x.days?.join() === '1,3,5')).toBe(true);
+  });
+  it('отклоняет пустые дни, сон и слишком тесное расписание', () => {
+    expect(() => reminderPlan({ ...defaultReminders, days: [] })).toThrow();
+    for (const mealTimes of [[], ['23:00'], ['08:00', '08:30']])
+      expect(() =>
+        reminderPlan({ ...defaultReminders, meals: true, mealMode: 'times', mealTimes }),
+      ).toThrow();
+  });
+  it('поддержка приходит только в выбранные дни без повторов еды', () => {
+    const p = reminderPlan({ ...defaultReminders, motivation: true, days: [1, 2] });
+    expect(p).toHaveLength(2);
+    expect(p.map((x) => x.weekday)).toEqual([2, 3]);
+    expect(p.every((x) => !x.followups)).toBe(true);
+  });
+});

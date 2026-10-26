@@ -11,6 +11,11 @@ export const ReminderSettingsSchema = z
     motivationTime: time,
     sleep: time,
     wake: time,
+    days: z.array(z.number().int().min(1).max(7)).min(1).max(7).default([1, 2, 3, 4, 5, 6, 7]),
+    mealMode: z.enum(['interval', 'times']).default('interval'),
+    mealTimes: z.array(time).max(8).default(['08:00', '13:00', '18:00']),
+    mealFollowups: z.boolean().default(true),
+    stopWhenGoal: z.boolean().default(true),
   })
   .strict()
   .refine((s) => s.sleep !== s.wake, { message: 'Время сна и пробуждения должны различаться.' });
@@ -22,6 +27,11 @@ export interface DailyReminder {
   hour: number;
   minute: number;
   weekday?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  days?: number[];
+  wake?: string;
+  sleep?: string;
+  followups?: boolean;
+  stopWhenGoal?: boolean;
   channel: 'meals' | 'water' | 'motivation';
   route: Tab;
 }
@@ -35,6 +45,11 @@ export const defaultReminders: ReminderSettings = {
   motivationTime: '11:00',
   sleep: '22:00',
   wake: '08:00',
+  days: [1, 2, 3, 4, 5, 6, 7],
+  mealMode: 'interval',
+  mealTimes: ['08:00', '13:00', '18:00'],
+  mealFollowups: true,
+  stopWhenGoal: true,
 };
 export const motivations = [
   'Маленькие шаги тоже считаются. Один спокойный выбор — уже забота о себе.',
@@ -51,6 +66,7 @@ export function isAwake(value: number, s: ReminderSettings) {
   return (value - start + 1440) % 1440 < (minutes(s.sleep) - start + 1440) % 1440;
 }
 export function reminderPlan(input: ReminderSettings): DailyReminder[] {
+  if (input.days?.length === 0) throw new Error('Выберите хотя бы один день недели.');
   const s = ReminderSettingsSchema.parse(input);
   const result: DailyReminder[] = [];
   const start = minutes(s.wake),
@@ -72,7 +88,30 @@ export function reminderPlan(input: ReminderSettings): DailyReminder[] {
       });
     }
   };
-  if (s.meals) add(s.mealHours * 60, 'meals', 10000);
+  if (s.meals) {
+    if (s.mealMode === 'interval') add(s.mealHours * 60, 'meals', 10000);
+    else {
+      const values = [...new Set(s.mealTimes.map(minutes))].sort((a, b) => a - b);
+      if (!values.length) throw new Error('Добавьте время еды.');
+      if (values.some((m) => !isAwake(m, s))) throw new Error('Время еды попадает на сон.');
+      if (
+        values.some(
+          (m, i) => values.length > 1 && (values[(i + 1) % values.length] - m + 1440) % 1440 < 60,
+        )
+      )
+        throw new Error('Между приёмами пищи нужен интервал не меньше часа.');
+      for (const m of values)
+        result.push({
+          id: 10000 + m,
+          hour: Math.floor(m / 60),
+          minute: m % 60,
+          title: 'Время позаботиться о питании',
+          body: 'Если пора поесть — сделайте паузу. Если уже поели, отметьте это в дневнике.',
+          channel: 'meals',
+          route: 'diary',
+        });
+    }
+  }
   if (s.water) add(s.waterMinutes, 'water', 20000);
   if (s.motivation) {
     const m = minutes(s.motivationTime);
@@ -90,7 +129,16 @@ export function reminderPlan(input: ReminderSettings): DailyReminder[] {
       }),
     );
   }
-  return result;
+  return result
+    .map((r) => ({
+      ...r,
+      days: [...new Set(s.days)].sort((a, b) => a - b),
+      wake: s.wake,
+      sleep: s.sleep,
+      followups: r.channel === 'meals' && s.mealFollowups,
+      stopWhenGoal: s.stopWhenGoal,
+    }))
+    .filter((r) => !r.weekday || r.days.includes(r.weekday === 1 ? 7 : r.weekday - 1));
 }
 export function loadReminders(): ReminderSettings {
   try {

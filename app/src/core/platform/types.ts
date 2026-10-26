@@ -1,4 +1,5 @@
 import type { DailyReminder } from '../notifications/plan';
+import type { ReminderProgress } from '../notifications/progress';
 import type { Tab } from '../navigation';
 export interface ScheduledReminder {
   id: number;
@@ -31,7 +32,15 @@ export interface Platform {
     replaceDaily: (
       items: DailyReminder[],
       requestPermission: boolean,
+      progress?: ReminderProgress,
     ) => Promise<{ granted: boolean; exact: boolean }>;
+    testDelivery: () => Promise<{
+      granted: boolean;
+      exact: boolean;
+      batterySaving: boolean;
+      restricted: boolean;
+    }>;
+    syncProgress: (progress: ReminderProgress) => Promise<void>;
     listen: (onAction: (route: Tab) => void) => Promise<() => void>;
     openExactSettings: () => Promise<void>;
     schedule: (reminder: ScheduledReminder) => Promise<boolean>;
