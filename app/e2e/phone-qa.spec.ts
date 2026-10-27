@@ -1,10 +1,11 @@
+import { openEntryEditor, mockCamera } from './product-helpers';
 import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 async function manual(page: Page, name = 'Контрольная запись') {
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
+  await openEntryEditor(page);
   await page.getByLabel('Название', { exact: true }).fill(name);
   await page.getByLabel('Масса порции, г').fill('100');
   await page.getByLabel('Калории, ккал').fill('100');
@@ -162,52 +163,39 @@ test('JSON-экспорт восстанавливает еду, воду и в�
     await fresh.close();
   }
 });
-test('ошибка фото понятна; пустой или повреждённый файл не отправляется в ИИ', async ({ page }) => {
+test('отказ камеры не отправляет фото, локальный поиск доступен', async ({ page }) => {
   let analyses = 0;
   page.on('request', (r) => {
-    if (r.url().includes('/v1/analyze-meal')) analyses++;
+    if (r.url().includes('/v1/analyze-')) analyses++;
   });
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'По фото', exact: true }).click();
-  await page.locator('input[type=file]').setInputFiles({
-    name: 'broken.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from('not an image'),
-  });
-  await expect(page.getByRole('alert')).toContainText('Не удалось открыть фото');
-  await expect(page.getByAltText('Фото блюда 1')).toHaveCount(0);
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
-  await expect(page.getByRole('alert')).toContainText('Добавьте фотографию');
+  await mockCamera(page, true);
+  await page.getByRole('button', { name: 'Сфотографировать продукт' }).click();
+  await expect(page.getByRole('alert')).toContainText('камер');
+  await page.getByLabel('Поиск продуктов').fill('гречка');
+  await expect(page.locator('.catalog-pick')).toHaveCount(2);
   expect(analyses).toBe(0);
 });
-test('ограничение трёх фото и удаление выбранного фото не оставляют скрытого запроса', async ({
-  page,
-}) => {
+test('отмена камеры не отправляет запрос и выбора галереи нет', async ({ page }) => {
+  let analyses = 0;
+  page.on('request', (r) => {
+    if (r.url().includes('/v1/analyze-')) analyses++;
+  });
   await page.goto('/');
-  const png = await page.screenshot();
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'По фото', exact: true }).click();
-  await page.locator('input[type=file]').setInputFiles(
-    Array.from({ length: 4 }, (_, i) => ({
-      name: `meal-${i}.png`,
-      mimeType: 'image/png',
-      buffer: png,
-    })),
-  );
-  await expect(page.getByRole('alert')).toContainText('до трёх фотографий');
-  await expect(page.getByAltText('Фото блюда 1')).toHaveCount(0);
+  await mockCamera(page);
+  await page.getByRole('button', { name: 'Сфотографировать продукт' }).click();
   await page
-    .locator('input[type=file]')
-    .setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: png });
-  await expect(page.getByAltText('Фото блюда 1')).toBeVisible();
-  await page.getByRole('button', { name: 'Удалить фото 1', exact: true }).click();
-  await expect(page.getByAltText('Фото блюда 1')).toHaveCount(0);
+    .getByRole('dialog', { name: 'Камера', exact: true })
+    .getByRole('button', { name: 'Отмена', exact: true })
+    .click();
+  await expect(page.getByRole('dialog', { name: 'Камера', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('searchbox', { name: 'Поиск продуктов' })).toBeEnabled();
+  await expect(page.locator('input[type=file]')).toHaveCount(0);
+  expect(analyses).toBe(0);
 });
 test('высота как при открытой клавиатуре: диалог прокручивается и возвращает фокус', async ({
   page,
@@ -216,7 +204,7 @@ test('высота как при открытой клавиатуре: диал
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
+  await openEntryEditor(page);
   await expect(page.getByLabel('Название', { exact: true })).toBeFocused();
   const button = page.getByRole('button', { name: 'Сохранить запись', exact: true });
   await button.scrollIntoViewIfNeeded();

@@ -1,3 +1,4 @@
+import { captureFood, openEntryEditor } from './product-helpers';
 import { DEMO_MEAL } from '../../server/src/providers/mock';
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from './fixtures';
@@ -130,7 +131,7 @@ test('диалоги при крупном тексте и коротком эк
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await fits(page);
   await accessible(page);
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную', exact: true }).click();
+  await openEntryEditor(page);
   await fits(page);
   await accessible(page);
   await page
@@ -141,7 +142,6 @@ test('диалоги при крупном тексте и коротком эк
   ).toBeInViewport();
   await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'База продуктов', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Поиск продуктов', exact: true }).fill('гречка');
   await fits(page);
   await accessible(page);
@@ -195,7 +195,7 @@ test('результат разбора с крупным текстом: про
   page,
 }) => {
   // This case checks layout, not provider integration or server rate limits.
-  await page.route('**/v1/analyze-text', (route) =>
+  await page.route('**/v1/analyze-meal', (route) =>
     route.fulfill({
       json: {
         analysis: DEMO_MEAL,
@@ -221,8 +221,7 @@ test('результат разбора с крупным текстом: про
   });
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByLabel('Что вы съели?', { exact: true }).fill('Курица с рисом');
-  await page.getByRole('button', { name: 'Определить КБЖУ', exact: true }).click();
+  await captureFood(page);
   await expect(page.getByRole('heading', { name: 'Разбор блюда', exact: true })).toBeVisible();
   await page
     .getByRole('combobox', { name: 'Приём пищи для блюда', exact: true })
