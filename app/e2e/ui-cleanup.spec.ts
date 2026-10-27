@@ -1,3 +1,4 @@
+import { openEntryEditor } from './product-helpers';
 import { test, expect } from './fixtures';
 test('добавить еду можно только в Дневнике, без дублей и постоянных предупреждений', async ({
   page,
@@ -21,7 +22,7 @@ test('сохранение и удаление не оставляют навя�
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
+  await openEntryEditor(page);
   await page.getByLabel('Название', { exact: true }).fill('Тест без баннера');
   await page.getByLabel('Масса порции, г').fill('100');
   await page.getByRole('button', { name: 'Сохранить запись', exact: true }).click();

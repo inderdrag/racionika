@@ -1,3 +1,4 @@
+import { captureFood } from './product-helpers';
 import { test, expect } from '@playwright/test';
 // UI tests do not consume the shared server configuration request quota.
 test.beforeEach(async ({ page }) => {
@@ -47,11 +48,7 @@ test('первый вход: профиль, безопасная норма и 
   await expect(
     page.getByRole('dialog').locator('input[type=checkbox], input[type=password]'),
   ).toHaveCount(0);
-  await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await captureFood(page);
   await expect(page.locator('.result-kcal')).toContainText('482');
   await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
   await page.getByRole('button', { name: 'Наставник', exact: true }).click();
@@ -72,15 +69,11 @@ test('локальный дневник без согласия, отзыв в �
   await register(page, false);
   let requests = 0;
   page.on('request', (req) => {
-    if (req.url().includes('/v1/analyze-text')) requests++;
+    if (req.url().includes('/v1/analyze-meal')) requests++;
   });
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByLabel('Что вы съели?').fill('Рис');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Сфотографировать продукт' }).click();
   await expect(page.getByRole('alert')).toContainText('Профиле');
   expect(requests).toBe(0);
   await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
