@@ -25,7 +25,7 @@ vi.mock('@capacitor/local-notifications', () => ({ LocalNotifications: mocks }))
 vi.mock('@capacitor/camera', () => ({
   Camera: { getPhoto: mocks.getPhoto },
   CameraResultType: { DataUrl: 'dataUrl' },
-  CameraSource: { Prompt: 'PROMPT' },
+  CameraSource: { Camera: 'CAMERA' },
 }));
 vi.mock('@capacitor/app', () => ({
   App: { addListener: mocks.addListener, exitApp: mocks.exitApp },
@@ -93,16 +93,33 @@ describe('Нативное расписание (подставной Android AP
 describe('Камера Android (подставной API)', () => {
   it('возвращает выбранное фото без отправки в сеть', async () => {
     mocks.getPhoto.mockResolvedValue({ dataUrl: 'data:image/jpeg;base64,fixture' });
-    expect(await nativePlatform.camera.pick()).toBe('data:image/jpeg;base64,fixture');
+    expect(await nativePlatform.camera.capture()).toBe('data:image/jpeg;base64,fixture');
+    expect(mocks.getPhoto).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'CAMERA', saveToGallery: false, allowEditing: false }),
+    );
+  });
+  it('не открывает камеру после отмены запроса', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(nativePlatform.camera.capture(controller.signal)).rejects.toThrow();
+    expect(mocks.getPhoto).not.toHaveBeenCalled();
+  });
+  it('не возвращает снимок после закрытия окна запроса', async () => {
+    const controller = new AbortController();
+    mocks.getPhoto.mockImplementation(async () => {
+      controller.abort();
+      return { dataUrl: 'data:image/jpeg;base64,fixture' };
+    });
+    await expect(nativePlatform.camera.capture(controller.signal)).rejects.toThrow();
   });
   it('отмена пользователем не является ошибкой', async () => {
     mocks.getPhoto.mockRejectedValue(new Error('User cancelled photos app'));
-    expect(await nativePlatform.camera.pick()).toBeUndefined();
+    expect(await nativePlatform.camera.capture()).toBeUndefined();
   });
   it('отказ разрешения и сбой камеры не маскируются под отмену', async () => {
     for (const message of ['Camera permission denied', 'Camera not available']) {
       mocks.getPhoto.mockRejectedValue({ message });
-      await expect(nativePlatform.camera.pick()).rejects.toThrow('Проверьте разрешения');
+      await expect(nativePlatform.camera.capture()).rejects.toThrow('Проверьте разрешения');
     }
   });
 });

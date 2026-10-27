@@ -8,11 +8,9 @@ import {
   RECOGNITION_REVISION,
   reviewMealComposition,
   type MealAnalysis,
-  type PublicConfig,
-  type Quality,
 } from '@racionika/shared';
 import { db, type FoodEntry, type MealType } from '../../core/db';
-import { analyzePhotos, analyzeText, getConfig, AiError } from '../../core/ai/client';
+import { analyzePhotos, getConfig, AiError } from '../../core/ai/client';
 import { compressPhoto, hashAnalysis } from '../../core/ai/images';
 import {
   analysisTotals,
@@ -22,176 +20,106 @@ import {
   roundedComponentCalories,
 } from '../../core/nutrition/analysis';
 import { getPlatform } from '../../core/platform';
+import { ProductPicker } from './ProductPicker';
 interface Props {
   day: string;
   editing?: FoodEntry;
   onClose: () => void;
-  onManual: () => void;
-  onCatalog: () => void;
   onSaved: () => void;
 }
-export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSaved }: Props) {
+export function AddFoodDialog({ day, editing, onClose, onSaved }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   useDialogFocus(dialog);
   const controller = useRef<AbortController | null>(null);
-  const [mode, setMode] = useState<'text' | 'photo'>('text');
-  const [text, setText] = useState('');
+  const mounted = useRef(true),
+    inFlight = useRef(false),
+    photo = useRef<string>();
   const [hint, setHint] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [quality, setQuality] = useState<Quality>(() => loadPreferences().quality);
-  const [config, setConfig] = useState<PublicConfig>();
+  const [quality] = useState(() => loadPreferences().quality);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [slow, setSlow] = useState(false);
+  const [busy, setBusy] = useState(false),
+    [slow, setSlow] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const consent = hasAiConsent();
   const [result, setResult] = useState<MealAnalysis | undefined>(editing?.analysis);
   const [demo, setDemo] = useState(editing?.source === 'demo');
   const [baseGrams, setBaseGrams] = useState(editing?.baseGrams ?? editing?.grams ?? 0);
   const level = 0;
   const [mealType, setMealType] = useState<MealType | ''>(editing?.mealType ?? '');
   useEffect(() => {
+    mounted.current = true;
     dialog.current?.showModal();
-    let alive = true;
-    const warmup = new AbortController();
-    if (!editing?.analysis) {
-      void getConfig(warmup.signal)
-        .then((value) => {
-          if (alive) setConfig(value);
-        })
-        .catch(() => {
-          if (alive)
-            setError(
-              'Нет связи с сервером ИИ. Сервер может просыпаться. Попробуйте позже; ручной ввод доступен.',
-            );
-        });
-    }
+    if (!editing) dialog.current?.querySelector<HTMLInputElement>('input[type=search]')?.focus();
     return () => {
-      alive = false;
-      warmup.abort();
+      mounted.current = false;
       controller.current?.abort();
+      photo.current = undefined;
     };
-  }, [editing?.analysis]);
+  }, [editing]);
   useEffect(() => {
     if (!busy) return;
     const timer = setTimeout(() => setSlow(true), 7000);
     return () => clearTimeout(timer);
   }, [busy]);
   function fail(error: unknown) {
-    setError(
-      error instanceof Error
-        ? error.message
-        : 'Не удалось выполнить действие. Попробуйте ручной ввод.',
-    );
+    if (mounted.current)
+      setError(error instanceof Error ? error.message : 'Не удалось выполнить действие.');
   }
-  async function addSources(sources: string[]) {
-    setError('');
-    try {
-      if (photos.length + sources.length > 3) throw new Error('Можно добавить до трёх фотографий.');
-      const processed = await Promise.all(sources.map((source) => compressPhoto(source, 1600)));
-      setPhotos((current) =>
-        [
-          ...new Set([...current, ...processed.map((data) => `data:image/jpeg;base64,${data}`)]),
-        ].slice(0, 3),
-      );
-    } catch (error) {
-      fail(error);
-    }
-  }
-  async function selectFiles(files: FileList | null) {
-    if (!files) return;
-    try {
-      const selected = Array.from(files);
-      if (selected.some((file) => file.size > 12 * 1024 * 1024))
-        throw new Error('Исходное фото должно быть меньше 12 МБ.');
-      const sources = await Promise.all(
-        selected.map(
-          (file) =>
-            new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(String(reader.result));
-              reader.onerror = () => reject(new Error('Не удалось прочитать фото.'));
-              reader.readAsDataURL(file);
-            }),
-        ),
-      );
-      await addSources(sources);
-    } catch (error) {
-      fail(error);
-    }
-  }
-  async function analyze() {
-    setError('');
-    if (!consent) {
-      setError('Включите ИИ в Профиле. Согласие сохраняется один раз.');
-      return;
-    }
-    if (config?.mode === 'disabled') {
-      setError(
-        'На сервере не задан ключ ИИ. Для проверки без ключа запустите npm run dev:demo; для реального анализа смотрите docs/DEV.md.',
-      );
-      return;
-    }
-    if (mode === 'text' && text.trim().length < 2) {
-      setError('Опишите блюдо или продукты.');
-      return;
-    }
-    if (mode === 'photo' && !photos.length) {
-      setError('Добавьте фотографию еды.');
+  async function analyze(takePhoto = false) {
+    if (inFlight.current) return;
+    if (!hasAiConsent()) {
+      setError('Разрешите ИИ в Профиле → Разрешения приложения.');
       return;
     }
     const current = new AbortController();
     controller.current = current;
-    setSlow(false);
+    inFlight.current = true;
     setBusy(true);
+    setSlow(false);
+    setError('');
     try {
-      const contextHint = hint.slice(0, 500);
-      const images =
-        mode === 'photo'
-          ? await Promise.all(
-              photos.map(async (source) => ({
-                mimeType: 'image/jpeg' as const,
-                data: await compressPhoto(source, quality === 'fast' ? 1280 : 1600),
-              })),
-            )
-          : [];
+      if (takePhoto) {
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        const source = await (await getPlatform()).camera.capture(current.signal);
+        current.signal.throwIfAborted();
+        if (!source) return;
+        photo.current = source;
+      }
+      if (!photo.current) return;
+      const config = await getConfig(current.signal);
       current.signal.throwIfAborted();
-      const requestText = text;
+      if (config.mode === 'disabled') throw new Error('Распознавание временно недоступно.');
+      const images = [
+        {
+          mimeType: 'image/jpeg' as const,
+          data: await compressPhoto(photo.current, quality === 'fast' ? 1280 : 1600),
+        },
+      ];
+      current.signal.throwIfAborted();
+      const contextHint = hint.slice(0, 500);
       const hash = await hashAnalysis({
         version: RECOGNITION_REVISION,
-        provider: config?.provider,
-        mode: config?.mode,
-        kind: mode,
-        text: mode === 'text' ? requestText : undefined,
+        provider: config.provider,
+        mode: config.mode,
+        kind: 'photo',
         images,
         hint: contextHint,
         quality,
       });
       const cached = await db.aiCache.get(hash);
-      let response: ReturnType<typeof AnalysisResponseSchema.parse>;
-      let wasCached = false;
-      if (cached && Date.now() - cached.createdAt < 86400000) {
-        const checked = AnalysisResponseSchema.safeParse(cached.response);
-        if (checked.success) {
-          response = checked.data;
-          wasCached = true;
-        } else
-          response =
-            mode === 'photo'
-              ? await analyzePhotos(images, contextHint, quality, current.signal)
-              : await analyzeText(requestText, contextHint, quality, current.signal);
-      } else
-        response =
-          mode === 'photo'
-            ? await analyzePhotos(images, contextHint, quality, current.signal)
-            : await analyzeText(requestText, contextHint, quality, current.signal);
+      const checked =
+        cached && Date.now() - cached.createdAt < 86400000
+          ? AnalysisResponseSchema.safeParse(cached.response)
+          : undefined;
+      current.signal.throwIfAborted();
+      const response = checked?.success
+        ? checked.data
+        : await analyzePhotos(images, contextHint, quality, current.signal);
       current.signal.throwIfAborted();
       const normalized = normalizeAnalysis(response.analysis);
       setResult(normalized);
       setBaseGrams(normalized.ingredients.reduce((sum, item) => sum + item.grams, 0));
       setDemo(response.demo);
-      // В кеше только оценка, не изображения; максимум 50 ответов, срок 24 часа.
-      if (!wasCached)
+      if (!checked?.success)
         await db.aiCache.put({
           hash,
           createdAt: Date.now(),
@@ -209,7 +137,8 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
       if (!(error instanceof AiError && error.code === 'cancelled') && !current.signal.aborted)
         fail(error);
     } finally {
-      setBusy(false);
+      inFlight.current = false;
+      if (mounted.current) setBusy(false);
     }
   }
   async function save() {
@@ -254,109 +183,31 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
   return (
     <dialog
       ref={dialog}
-      className="analysis-dialog"
+      className="analysis-dialog product-dialog"
+      aria-labelledby="analysis-title"
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
-      aria-labelledby="analysis-title"
     >
       <div className="section-head">
-        <h2 id="analysis-title">{result ? 'Разбор блюда' : 'Добавить еду'}</h2>
+        <h2 id="analysis-title">{result ? 'Разбор блюда' : 'Добавить продукт'}</h2>
         <button className="close" aria-label="Закрыть" onClick={onClose}>
           ×
         </button>
       </div>
       {!result && (
-        <p className="subtle">
-          Фото или описание → ингредиенты → КБЖУ. Значения вручную вводить не нужно.
+        <ProductPicker
+          day={day}
+          busy={busy}
+          onCamera={() => void analyze(true)}
+          onSaved={onSaved}
+        />
+      )}
+      {result && demo && (
+        <p className="ai-mode demo-mode" role="status">
+          ДЕМО: фиксированный пример, без распознавания
         </p>
-      )}
-      {!result && !editing && (
-        <button className="secondary catalog-open" onClick={onCatalog}>
-          База продуктов
-        </button>
-      )}
-      {(!result || demo) && (
-        <div
-          className={`ai-mode ${config?.mode === 'demo' || demo ? 'demo-mode' : ''}`}
-          role="status"
-        >
-          {config?.mode === 'demo' || demo
-            ? 'ДЕМО: фиксированный пример, без распознавания'
-            : config?.mode === 'real'
-              ? 'ИИ подключён · оценка, не точное измерение'
-              : config?.mode === 'disabled'
-                ? 'ИИ не настроен на сервере'
-                : 'Проверяем сервер…'}
-        </div>
-      )}
-      {!result && (
-        <>
-          <div className="segmented">
-            <button aria-pressed={mode === 'text'} disabled={busy} onClick={() => setMode('text')}>
-              Описать еду
-            </button>
-            <button
-              aria-pressed={mode === 'photo'}
-              disabled={busy}
-              onClick={() => setMode('photo')}
-            >
-              По фото
-            </button>
-          </div>
-          {mode === 'text' ? (
-            <label className="field">
-              Что вы съели?
-              <textarea
-                maxLength={2000}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Например: 2 яйца, тост с маслом, кофе с молоком"
-                rows={3}
-              />
-            </label>
-          ) : (
-            <div className="photo-upload">
-              <label className="secondary file-picker">
-                Выбрать фото
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  onChange={(e) => {
-                    void selectFiles(e.target.files);
-                    e.target.value = '';
-                  }}
-                  disabled={busy || photos.length >= 3}
-                />
-              </label>
-              <button
-                className="secondary"
-                disabled={busy || photos.length >= 3}
-                onClick={() => void awaitCamera()}
-              >
-                Камера / галерея
-              </button>
-              <p className="subtle">
-                До 3 фото одного блюда. Перед отправкой удаляем EXIF и сжимаем JPEG.
-              </p>
-              <div className="photo-grid">
-                {photos.map((source, index) => (
-                  <figure key={index}>
-                    <img src={source} alt={`Фото блюда ${index + 1}`} />
-                    <button
-                      aria-label={`Удалить фото ${index + 1}`}
-                      onClick={() => setPhotos(photos.filter((_, i) => i !== index))}
-                    >
-                      ×
-                    </button>
-                  </figure>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
       )}
       {result && (
         <>
@@ -364,7 +215,7 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
           {!result.is_food ? (
             <>
               <p className="error" role="alert">
-                На изображении не распознана еда. Попробуйте другое фото или текстовое описание.
+                На фото не распознана еда. Сделайте другой снимок.
               </p>
               <button className="secondary" onClick={() => setResult(undefined)}>
                 Попробовать снова
@@ -528,52 +379,18 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
           )}
         </>
       )}
-      {!result && (
-        <>
-          <label className="field">
-            Подсказка для ИИ (необязательно)
-            <input
-              value={hint}
-              maxLength={500}
-              onChange={(e) => setHint(e.target.value)}
-              placeholder="Например: порция 400 г, без масла"
-            />
-          </label>
-          <label className="field">
-            Качество
-            <select value={quality} onChange={(e) => setQuality(e.target.value as Quality)}>
-              <option value="fast">Экономно</option>
-              <option value="accurate">Точно — всё равно приблизительная оценка</option>
-            </select>
-          </label>
-        </>
-      )}
       {busy ? (
         <div className="analysis-busy" role="status">
           <span className="spinner" />
-          <p>
-            {slow
-              ? 'Запрос ещё выполняется. Бесплатный сервер может просыпаться до минуты.'
-              : 'ИИ анализирует…'}
-          </p>
-          <button
-            className="secondary"
-            onClick={() => {
-              controller.current?.abort();
-            }}
-          >
+          <p>{slow ? 'Распознавание ещё выполняется…' : 'Распознаём фото…'}</p>
+          <button className="secondary" onClick={() => controller.current?.abort()}>
             Отменить запрос
           </button>
         </div>
-      ) : !result ? (
-        <button className="primary" onClick={() => void analyze()}>
-          Определить КБЖУ
-        </button>
-      ) : result.is_food ? (
+      ) : result?.is_food ? (
         <button
           className="primary save-analysis"
           disabled={
-            busy ||
             reviewIssues.length > 0 ||
             !result.ingredients.length ||
             !result.dish_name.trim() ||
@@ -589,35 +406,8 @@ export function AddFoodDialog({ day, editing, onClose, onManual, onCatalog, onSa
           {error}
         </p>
       )}
-      {!result && (
-        <div className="dialog-footer">
-          <button
-            className="text-button"
-            disabled={busy}
-            onClick={() => {
-              setResult(undefined);
-              setPhotos([]);
-              setError('');
-              setText('');
-            }}
-          >
-            Новое блюдо
-          </button>
-          <button className="text-button" disabled={busy} onClick={onManual}>
-            Внести КБЖУ вручную
-          </button>
-        </div>
-      )}
     </dialog>
   );
-  async function awaitCamera() {
-    try {
-      const source = await (await getPlatform()).camera.pick();
-      if (source) await addSources([source]);
-    } catch (error) {
-      fail(error);
-    }
-  }
   function changeComponentGrams(index: number, grams: number) {
     const item = totals?.components[index];
     if (!result || !item || !Number.isFinite(grams)) return;
