@@ -1,3 +1,4 @@
+import { openEntryEditor } from './product-helpers';
 import { expect, test } from './fixtures';
 import type { Page } from '@playwright/test';
 import { APP_VERSION } from '@racionika/shared';
@@ -106,7 +107,7 @@ test('кольцо 0 → 50 → 100%, превышение не ломает ш�
   await expect(ring).toHaveAttribute('aria-valuenow', '0');
   await expect(page.locator('.ring-fill')).toHaveAttribute('stroke-dasharray', '0 100');
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
+  await openEntryEditor(page);
   await page.getByLabel('Название', { exact: true }).fill('Тестовая порция');
   await page.getByLabel('Масса порции, г').fill('500');
   await page.getByLabel('Калории, ккал').fill('200');

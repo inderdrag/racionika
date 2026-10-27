@@ -1,9 +1,10 @@
+import { captureFood, openEntryEditor } from './product-helpers';
 import { expect, test } from './fixtures';
-test('ручной ввод как запасной путь, вода и перезагрузка', async ({ page }) => {
+test('правка существующей ручной записи, вода и перезагрузка', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
+  await openEntryEditor(page);
   await page.getByLabel('Название', { exact: true }).fill('Овсяная каша');
   await page.getByLabel('Масса порции, г').fill('150');
   await page.getByLabel('Калории, ккал').fill('100');
@@ -19,20 +20,15 @@ test('ручной ввод как запасной путь, вода и пер
   await expect(page.locator('.calorie-orbit strong')).toHaveText('150');
   await expect(page.locator('.water .section-head>strong')).toHaveText('200 мл');
 });
-test('описание → состав → локальный пересчёт → сохранение', async ({ page }) => {
+test('камера → состав → локальный пересчёт → сохранение', async ({ page }) => {
   let requests = 0;
   page.on('request', (req) => {
-    if (req.url().includes('/v1/analyze-text')) requests++;
+    if (req.url().includes('/v1/analyze-meal')) requests++;
   });
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await expect(page.getByText('ДЕМО: фиксированный пример, без распознавания')).toBeVisible();
-  await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await captureFood(page);
   await expect(page.locator('.result-kcal')).toContainText('482');
   await page.getByLabel('Масса ингредиента 1', { exact: true }).fill('300');
   await expect(page.locator('.result-kcal')).toContainText('729');
@@ -59,17 +55,8 @@ test('фото: сжатие JPEG, согласие, пометка демо', a
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'По фото', exact: true }).click();
-  const png = await page.screenshot();
-  await page
-    .locator('input[type=file]')
-    .setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: png });
-  await expect(page.getByAltText('Фото блюда 1')).toBeVisible();
   const request = page.waitForRequest((req) => req.url().includes('/v1/analyze-meal'));
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await captureFood(page);
   const payload = (await request).postDataJSON();
   expect(payload.images[0].mimeType).toBe('image/jpeg');
   expect(Buffer.from(payload.images[0].data, 'base64')[0]).toBe(255);
@@ -93,11 +80,7 @@ test('нет отправки без согласия и нет переполн
   await page.reload();
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByLabel('Что вы съели?').fill('Два яйца');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Сфотографировать продукт' }).click();
   await expect(page.getByRole('alert')).toContainText('Профиле');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(
@@ -106,20 +89,16 @@ test('нет отправки без согласия и нет переполн
       .evaluate((element) => element.scrollWidth <= element.clientWidth),
   ).toBe(true);
 });
-test('повтор того же описания использует локальный кеш', async ({ page }) => {
+test('повтор того же снимка использует локальный кеш', async ({ page }) => {
   let requests = 0;
   page.on('request', (req) => {
-    if (req.url().includes('/v1/analyze-text')) requests++;
+    if (req.url().includes('/v1/analyze-meal')) requests++;
   });
   await page.goto('/');
   for (let i = 0; i < 2; i++) {
     await page.getByRole('button', { name: 'Дневник', exact: true }).click();
     await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-    await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-      .click();
+    await captureFood(page);
     await expect(page.locator('.result-kcal')).toContainText('482');
     await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
   }
@@ -129,16 +108,12 @@ test('в результате категория, состав и калории
   await page.addInitScript(() => localStorage.setItem('racionika.autoAdditions', 'true'));
   let requests = 0;
   page.on('request', (req) => {
-    if (req.url().includes('/v1/analyze-text')) requests++;
+    if (req.url().includes('/v1/analyze-meal')) requests++;
   });
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await captureFood(page);
   await expect(page.locator('.result-kcal')).toContainText('482');
   await expect(page.locator('.result-grams')).toHaveText('330 г');
   await expect(page.locator('.ingredient-title')).toHaveText([
@@ -164,7 +139,7 @@ test('в результате категория, состав и калории
   await expect(page.locator('.result-grams')).toHaveText('180 г');
   expect(requests).toBe(1);
 });
-for (const kind of ['text', 'photo'] as const) {
+for (const kind of ['photo'] as const) {
   test(`чистый результат ${kind}: одинаковый экран реального режима`, async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 640 });
     await page.route('**/v1/config', async (route) => {
@@ -172,28 +147,15 @@ for (const kind of ['text', 'photo'] as const) {
       const data = await response.json();
       await route.fulfill({ response, json: { ...data, mode: 'real' } });
     });
-    await page.route(
-      `**/v1/${kind === 'photo' ? 'analyze-meal' : 'analyze-text'}`,
-      async (route) => {
-        const response = await route.fetch();
-        const data = await response.json();
-        await route.fulfill({ response, json: { ...data, demo: false } });
-      },
-    );
+    await page.route('**/v1/analyze-meal', async (route) => {
+      const response = await route.fetch();
+      const data = await response.json();
+      await route.fulfill({ response, json: { ...data, demo: false } });
+    });
     await page.goto('/');
     await page.getByRole('button', { name: 'Дневник', exact: true }).click();
     await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-    if (kind === 'photo') {
-      await page.getByRole('button', { name: 'По фото', exact: true }).click();
-      const png = await page.screenshot();
-      await page
-        .locator('input[type=file]')
-        .setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: png });
-    } else await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-      .click();
+    await captureFood(page);
     await expect(page.locator('.result-kcal')).toContainText('482');
     await expect(page.locator('.result-grams')).toHaveText('330 г');
     await expect(
@@ -214,8 +176,8 @@ for (const kind of ['text', 'photo'] as const) {
     await expect(page.getByRole('region', { name: 'Ужин', exact: true })).toContainText('482 ккал');
   });
 }
-test('серверная ошибка квоты понятна и ручной ввод остаётся', async ({ page }) => {
-  await page.route('**/v1/analyze-text', (route) =>
+test('серверная ошибка квоты понятна и локальный поиск остаётся', async ({ page }) => {
+  await page.route('**/v1/analyze-meal', (route) =>
     route.fulfill({
       status: 429,
       contentType: 'application/json',
@@ -230,17 +192,13 @@ test('серверная ошибка квоты понятна и ручной 
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByLabel('Что вы съели?').fill('Два яйца');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await captureFood(page);
   await expect(page.getByRole('alert')).toContainText('Лимит ИИ');
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
-  await expect(page.getByLabel('Калории, ккал')).toBeVisible();
+  await page.getByLabel('Поиск продуктов').fill('гречка');
+  await expect(page.locator('.catalog-pick')).toHaveCount(2);
 });
 test('ответ «не еда» не сохраняется в дневник', async ({ page }) => {
-  await page.route('**/v1/analyze-text', async (route) => {
+  await page.route('**/v1/analyze-meal', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     body.analysis = {
@@ -255,15 +213,7 @@ test('ответ «не еда» не сохраняется в дневник',
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByLabel('Что вы съели?').fill('Стул');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
-  await expect(
-    page.getByText(
-      'На изображении не распознана еда. Попробуйте другое фото или текстовое описание.',
-    ),
-  ).toBeVisible();
+  await captureFood(page);
+  await expect(page.getByText('На фото не распознана еда. Сделайте другой снимок.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Сохранить демозапись' })).toHaveCount(0);
 });
