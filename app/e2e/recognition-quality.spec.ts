@@ -1,3 +1,4 @@
+import { captureFood } from './product-helpers';
 import { expect, test } from './fixtures';
 import { DEMO_MEAL } from '../../server/src/providers/mock';
 import type { MealAnalysis } from '@racionika/shared';
@@ -40,8 +41,7 @@ async function prepare(
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
 }
 async function textAnalyze(page: import('@playwright/test').Page) {
-  await page.getByLabel('Что вы съели?').fill('Тестовая контрольная порция');
-  await page.getByRole('button', { name: 'Определить КБЖУ', exact: true }).click();
+  await captureFood(page);
 }
 test('этикетка сохраняет ккал, не переписывает их по 4/4/9', async ({ page }) => {
   const a = structuredClone(DEMO_MEAL);
@@ -126,28 +126,7 @@ test('одинаковое фото не добавляется дважды, ф
       encodedImage = r.postDataJSON().images[0].data;
     }
   });
-  await page.getByRole('button', { name: 'По фото', exact: true }).click();
-  const buffer = Buffer.from(
-    await page.evaluate(() => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 2000;
-      canvas.height = 1500;
-      const ctx = canvas.getContext('2d')!;
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, 2000, 1500);
-      ctx.fillStyle = 'black';
-      ctx.font = '80px Arial';
-      ctx.fillText('Тестовая этикетка — не реальное блюдо', 80, 300);
-      return canvas.toDataURL('image/png').split(',')[1];
-    }),
-    'base64',
-  );
-  await page.locator('input[type=file]').setInputFiles([
-    { name: 'meal1.png', mimeType: 'image/png', buffer },
-    { name: 'meal2.png', mimeType: 'image/png', buffer },
-  ]);
-  await expect(page.locator('.photo-grid img')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Определить КБЖУ', exact: true }).click();
+  await captureFood(page);
   await expect(page.locator('.result-kcal')).toContainText('530');
   expect(imageCount).toBe(1);
   const width = await page.evaluate(

@@ -20,19 +20,23 @@ export const nativePlatform: Platform = {
     },
   },
   camera: {
-    pick: async () => {
+    capture: async (signal) => {
+      signal?.throwIfAborted();
       try {
-        return (
-          await Camera.getPhoto({
-            quality: 80,
-            resultType: CameraResultType.DataUrl,
-            source: CameraSource.Prompt,
-            width: 1280,
-            height: 1280,
-            correctOrientation: true,
-          })
-        ).dataUrl;
+        const image = await Camera.getPhoto({
+          quality: 80,
+          resultType: CameraResultType.DataUrl,
+          source: CameraSource.Camera,
+          saveToGallery: false,
+          allowEditing: false,
+          width: 1280,
+          height: 1280,
+          correctOrientation: true,
+        });
+        signal?.throwIfAborted();
+        return image.dataUrl;
       } catch (error) {
+        if (signal?.aborted) throw error;
         const message =
           error instanceof Error
             ? error.message
@@ -40,7 +44,7 @@ export const nativePlatform: Platform = {
         if (/cancel(?:led|ed)|user_cancel|no (?:image|photo) (?:picked|selected)/i.test(message))
           return undefined;
         throw new Error(
-          'Не удалось открыть камеру или галерею. Проверьте разрешения Рационики в настройках Android и попробуйте ещё раз.',
+          'Не удалось открыть камеру. Проверьте разрешения Рационики в настройках Android и попробуйте ещё раз.',
           { cause: error },
         );
       }

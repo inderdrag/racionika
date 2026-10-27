@@ -16,7 +16,6 @@ import { useNavigation, type Tab } from './core/navigation';
 import { consistentNutrients, scaleNutrients } from './core/nutrition/meal';
 import { getPlatform } from './core/platform';
 import { entryTotals } from './core/nutrition/analysis';
-import { FoodCatalogDialog } from './features/add-food/FoodCatalogDialog';
 import { CatalogSource } from './features/add-food/CatalogSource';
 import { AddFoodDialog } from './features/add-food/AddFoodDialog';
 import { Coach } from './features/Coach';
@@ -30,8 +29,6 @@ export function App() {
   const [entries, setEntries] = useState<FoodEntry[]>([]);
   const [water, setWater] = useState(0);
   const [open, setOpen] = useState(false);
-  const [manual, setManual] = useState(false);
-  const [catalogOpen, setCatalogOpen] = useState(false);
   const [editing, setEditing] = useState<FoodEntry>();
   const [notice, setNotice] = useState('');
   const [profile, setProfile] = useState(loadProfile);
@@ -210,8 +207,6 @@ export function App() {
   }
   function closeDialog() {
     setOpen(false);
-    setManual(false);
-    setCatalogOpen(false);
     setEditing(undefined);
     // Wait until the modal unmounts: background controls are inert while it is open.
     requestAnimationFrame(() => addButton.current?.focus());
@@ -290,7 +285,7 @@ export function App() {
           Ваш спокойный ритм · {APP_VERSION}
           <br />
           <span>
-            КБЖУ по фото и описанию.
+            Поиск продуктов и КБЖУ по фото.
             <br />
             Профиль и дневник — на вашем устройстве.
           </span>
@@ -529,7 +524,7 @@ export function App() {
           ))}
         </nav>
       </div>
-      {open && !catalogOpen && (manual || (editing && !editing.analysis)) && (
+      {open && editing && !editing.analysis && (
         <FoodDialog
           day={day}
           editing={editing}
@@ -540,16 +535,11 @@ export function App() {
           }}
         />
       )}
-      {open && catalogOpen && (
-        <FoodCatalogDialog day={day} onClose={closeDialog} onSaved={closeDialog} />
-      )}
-      {open && !manual && !catalogOpen && (!editing || editing.analysis) && (
+      {open && (!editing || editing.analysis) && (
         <AddFoodDialog
           day={day}
           editing={editing}
           onClose={closeDialog}
-          onManual={() => setManual(true)}
-          onCatalog={() => setCatalogOpen(true)}
           onSaved={() => {
             setNotice('');
             closeDialog();

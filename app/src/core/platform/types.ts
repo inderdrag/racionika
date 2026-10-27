@@ -9,7 +9,7 @@ export interface ScheduledReminder {
 }
 export interface Platform {
   navigation: { listenBack: (onBack: () => boolean) => Promise<() => void> };
-  camera: { pick: () => Promise<string | undefined> };
+  camera: { capture: (signal?: AbortSignal) => Promise<string | undefined> };
   secureStorage: {
     get: (key: string) => Promise<string | null>;
     set: (key: string, value: string) => Promise<void>;

@@ -1,3 +1,4 @@
+import { captureFood, openEntryEditor } from './product-helpers';
 import { expect, test } from './fixtures';
 import type { Page } from '@playwright/test';
 import { APP_VERSION } from '@racionika/shared';
@@ -21,7 +22,7 @@ async function meal(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'Внести КБЖУ вручную' }).click();
+  await openEntryEditor(page);
   await page.getByLabel('Название', { exact: true }).fill('Овсянка');
   await page.getByLabel('Калории, ккал').fill('100');
   await page.getByLabel('Белки, г').fill('5');
@@ -293,7 +294,7 @@ test('блюдо ИИ сохраняет детали при правке сос
       sessionStorage.setItem(`racionika.token.${version}`, 'ui-fixture-not-a-real-token'),
     APP_VERSION,
   );
-  await page.route('**/v1/analyze-text', (route) =>
+  await page.route('**/v1/analyze-meal', (route) =>
     route.fulfill({
       json: {
         analysis: DEMO_MEAL,
@@ -315,11 +316,7 @@ test('блюдо ИИ сохраняет детали при правке сос
   await page.goto('/');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByLabel('Что вы съели?').fill('Курица с рисом');
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Определить КБЖУ', exact: true })
-    .click();
+  await captureFood(page);
   await page.getByRole('combobox', { name: 'Приём пищи для блюда' }).selectOption('lunch');
   await page.getByRole('button', { name: 'Сохранить демозапись' }).click();
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();

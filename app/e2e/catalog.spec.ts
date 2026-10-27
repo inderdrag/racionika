@@ -3,8 +3,7 @@ import type { Page } from '@playwright/test';
 async function open(page: Page) {
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await page.getByRole('button', { name: 'База продуктов', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'База продуктов', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Добавить продукт', exact: true })).toBeVisible();
 }
 test.beforeEach(async ({ page }) => {
   await page.route('**/v1/config', (r) =>
@@ -30,9 +29,9 @@ test('офлайн-поиск, приготовленный рис, граммо
   await page.goto('/');
   await context.setOffline(true);
   await open(page);
-  await expect(page.getByText('505 продуктов и вариантов · USDA · без интернета')).toBeVisible();
-  await page.getByLabel('Поиск продуктов', { exact: true }).fill('Рис белый длиннозёрный');
-  await page.getByLabel('Вид', { exact: true }).selectOption('cooked');
+  await page
+    .getByLabel('Поиск продуктов', { exact: true })
+    .fill('Рис белый длиннозёрный приготовленный');
   await expect(page.locator('.catalog-results li')).toHaveCount(1);
   await page.locator('.catalog-pick').click();
   await page.getByLabel('Масса, г', { exact: true }).fill('150');
@@ -57,8 +56,9 @@ test('правка порции не теряет точные КБЖУ и ис�
 }) => {
   await page.goto('/');
   await open(page);
-  await page.getByLabel('Поиск продуктов', { exact: true }).fill('Рис белый длиннозёрный');
-  await page.getByLabel('Вид', { exact: true }).selectOption('cooked');
+  await page
+    .getByLabel('Поиск продуктов', { exact: true })
+    .fill('Рис белый длиннозёрный приготовленный');
   await page.locator('.catalog-pick').click();
   await page.getByLabel('Куда добавить', { exact: true }).selectOption('dinner');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
@@ -77,8 +77,7 @@ test('правка порции не теряет точные КБЖУ и ис�
 test('источник проходит экспорт и импорт JSON вместе с дневником и избранным', async ({ page }) => {
   await page.goto('/');
   await open(page);
-  await page.getByLabel('Поиск продуктов', { exact: true }).fill('Киноа');
-  await page.getByLabel('Вид', { exact: true }).selectOption('cooked');
+  await page.getByLabel('Поиск продуктов', { exact: true }).fill('Киноа приготовленный');
   await page.locator('.catalog-pick').click();
   await page.getByLabel('Куда добавить', { exact: true }).selectOption('breakfast');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
@@ -100,92 +99,42 @@ test('источник проходит экспорт и импорт JSON вм
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.diary-entry')).toContainText('USDA');
 });
-test('внешний поиск только по кнопке; неполные данные не выбираются и требуется сверка упаковки', async ({
+test('при открытии только строка поиска и камера, ввод никогда не отправляется в сеть', async ({
   page,
+  context,
 }) => {
-  let calls = 0;
-  let url = '';
-  await page.route(/^https:\/\/(world|search)\.openfoodfacts\.org\//, (route) => {
-    if (route.request().method() === 'OPTIONS')
-      return route.fulfill({
-        status: 204,
-        headers: {
-          'access-control-allow-origin': '*',
-          'access-control-allow-headers': 'content-type,user-agent',
-        },
-      });
-    calls++;
-    url = route.request().url();
-    expect(route.request().headers().authorization).toBeUndefined();
-    return route.fulfill({
-      headers: { 'access-control-allow-origin': '*' },
-      json: route.request().url().includes('search.openfoodfacts.org')
-        ? {
-            hits: [
-              { code: '3017620422003', product_name: 'Тестовая паста', brands: ['Тест'] },
-              { code: 'not-a-code', product_name: 'Некорректный ID' },
-            ],
-          }
-        : {
-            status: 1,
-            product: {
-              code: '3017620422003',
-              product_name: 'Тестовая паста',
-              nutrition_data_per: '100g',
-              nutriments: {
-                'energy-kcal_100g': 500,
-                proteins_100g: 10,
-                fat_100g: 30,
-                carbohydrates_100g: 40,
-              },
-            },
-          },
-    });
+  await page.goto('/');
+  let network = 0;
+  page.on('request', (r) => {
+    if (/\/v1\/|openfoodfacts/.test(r.url())) network++;
   });
-  await page.goto('/');
   await open(page);
-  await page.getByRole('button', { name: 'В интернете', exact: true }).click();
-  await page.getByLabel('Поиск продуктов', { exact: true }).fill('шоколадная паста');
-  expect(calls).toBe(0);
-  await page.getByRole('button', { name: 'Найти в интернете', exact: true }).click();
-  await expect(page.locator('.catalog-results li')).toHaveCount(1);
-  expect(calls).toBe(1);
-  expect(new URL(url).searchParams.get('q')).toBe('шоколадная паста');
-  await page.locator('.catalog-pick').click();
-  await expect(
-    page.getByRole('button', { name: 'Добавить в дневник', exact: true }),
-  ).toBeDisabled();
-  await page.getByLabel('Куда добавить', { exact: true }).selectOption('snack');
-  await page.getByRole('checkbox', { name: /Сверил КБЖУ/ }).check();
-  await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
-  await expect(page.locator('.diary-entry')).toContainText('Open Food Facts');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.locator('input')).toHaveCount(1);
+  await expect(dialog.locator('select, textarea, input[type=file]')).toHaveCount(0);
+  await expect(dialog.getByRole('button')).toHaveCount(2);
+  await expect(dialog.getByRole('searchbox')).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'Сфотографировать продукт' })).toBeVisible();
+  await context.setOffline(true);
+  await page.getByLabel('Поиск продуктов').fill('неизвестныйпродукт');
+  await expect(page.getByText('Ничего не найдено.', { exact: true })).toBeVisible();
+  await page.getByLabel('Поиск продуктов').fill('гречка');
+  await expect(page.locator('.catalog-pick')).toHaveCount(2);
+  await page.getByLabel('Поиск продуктов').press('Enter');
+  expect(network).toBe(0);
 });
-test('недоступный внешний сервис не мешает вернуться к офлайн-базе; пустой поиск и узкий экран', async ({
-  page,
-}) => {
-  await page.route(/^https:\/\/(world|search)\.openfoodfacts\.org\//, (r) =>
-    r.fulfill({
-      status: r.request().method() === 'OPTIONS' ? 204 : 503,
-      headers: {
-        'access-control-allow-origin': '*',
-        'access-control-allow-headers': 'content-type,user-agent',
-      },
-      body: '',
-    }),
-  );
+test('камера находится внутри строки справа на узком экране', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');
-  await page.setViewportSize({ width: 360, height: 640 });
   await open(page);
-  await page.getByLabel('Поиск продуктов', { exact: true }).fill('абракадабраням');
-  await expect(page.getByText('Ничего не найдено. Попробуйте другое название.')).toBeVisible();
-  await page.getByRole('button', { name: 'В интернете', exact: true }).click();
-  await page.getByRole('button', { name: 'Найти в интернете', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('недоступен');
-  await page.getByRole('button', { name: 'На телефоне', exact: true }).click();
-  await page.getByLabel('Поиск продуктов', { exact: true }).fill('гречка');
-  await expect(page.locator('.catalog-results li')).toHaveCount(2);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
-  await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'База продуктов', exact: true })).toBeVisible();
+  const row = await page.locator('.product-search').boundingBox();
+  const camera = await page.getByRole('button', { name: 'Сфотографировать продукт' }).boundingBox();
+  const input = await page.getByRole('searchbox', { name: 'Поиск продуктов' }).boundingBox();
+  expect(camera!.x).toBeGreaterThan(input!.x + input!.width / 2);
+  expect(camera!.x + camera!.width).toBeLessThanOrEqual(row!.x + row!.width);
+  expect(camera!.y).toBeGreaterThanOrEqual(input!.y);
+  expect(camera!.height).toBeGreaterThanOrEqual(44);
+  await page.screenshot({ path: '/data/product-search-light.png' });
+  await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+  await page.screenshot({ path: '/data/product-search-dark.png' });
 });

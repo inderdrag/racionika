@@ -1,3 +1,4 @@
+import { captureFood } from './product-helpers';
 import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -66,7 +67,7 @@ test('редактирование профиля в фунтах не меня�
     await page.evaluate(() => JSON.parse(localStorage.getItem('racionika.profile')!).weight),
   ).toBe(80);
 });
-test('качество по умолчанию применяется к новому разбору и можно поменять перед запросом', async ({
+test('качество по умолчанию применяется к новому разбору без лишних настроек перед снимком', async ({
   page,
 }) => {
   await profile(page);
@@ -77,14 +78,11 @@ test('качество по умолчанию применяется к нов�
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();
   await expect(
     page.getByRole('dialog').getByRole('combobox', { name: 'Качество', exact: true }),
-  ).toHaveValue('accurate');
-  await page
-    .getByRole('dialog')
-    .getByRole('combobox', { name: 'Качество', exact: true })
-    .selectOption('fast');
-  expect(
-    await page.evaluate(() => JSON.parse(localStorage.getItem('racionika.preferences')!).quality),
-  ).toBe('accurate');
+  ).toHaveCount(0);
+  const request = page.waitForRequest((r) => r.url().includes('/v1/analyze-meal'));
+  await captureFood(page);
+  expect((await request).postDataJSON().quality).toBe('accurate');
+  await expect(page.locator('.result-kcal')).toBeVisible();
 });
 test('CSV в UTF-8 за выбранные даты и пустые дни не превращаются в нули', async ({ page }) => {
   await profile(page);

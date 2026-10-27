@@ -1,28 +1,9 @@
+import { captureWebPhoto } from './web-camera';
 import type { Platform } from './types';
 const timers = new Map<number, ReturnType<typeof setTimeout>>();
 export const webPlatform: Platform = {
   navigation: { listenBack: async () => () => {} },
-  camera: {
-    pick: () =>
-      new Promise((resolve) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = () => {
-          const file = input.files?.[0];
-          if (!file) {
-            resolve(undefined);
-            return;
-          }
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = () => resolve(undefined);
-          reader.readAsDataURL(file);
-        };
-        input.oncancel = () => resolve(undefined);
-        input.click();
-      }),
-  },
+  camera: { capture: captureWebPhoto },
   secureStorage: {
     get: async (key) => sessionStorage.getItem(key),
     set: async (key, value) => {

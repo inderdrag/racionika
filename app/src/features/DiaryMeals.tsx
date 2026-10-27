@@ -177,7 +177,7 @@ export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
               <Icon name="leaf" size={32} />
             </div>
             <h3>Начнём с одного блюда</h3>
-            <p>Фото или описание — КБЖУ посчитает ИИ.</p>
+            <p>Найдите продукт или сфотографируйте еду.</p>
           </div>
         ) : expanded ? (
           groups.map((group) => {
