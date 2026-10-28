@@ -10,7 +10,7 @@ async function open(page: Page) {
   await page
     .getByRole('searchbox', { name: 'Поиск продуктов' })
     .fill('Рис белый длиннозёрный приготовленный');
-  await page.locator('.catalog-pick').click();
+  await page.locator('[data-product-id="usda-168878"]').click();
 }
 async function like(page: Page) {
   await open(page);
@@ -80,7 +80,7 @@ test('search appends into the same recipe, cancels safely, saves once and keeps 
   await composer.getByRole('button', { name: '＋ Добавить продукт', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: 'Поиск продуктов' })).toBeFocused();
   await page.getByRole('searchbox', { name: 'Поиск продуктов' }).fill('Киноа приготовленный');
-  await page.locator('.product-dialog').last().locator('.catalog-pick').click();
+  await page.locator('.product-dialog').last().locator('[data-product-id="usda-168917"]').click();
   const picker = page.locator('.product-dialog').last();
   await picker.getByLabel('Масса, г', { exact: true }).fill('50');
   await expect(picker.getByLabel('Куда добавить', { exact: true })).toHaveCount(0);
@@ -165,15 +165,23 @@ test('hearts beside search results and saved diary entries replace old actions',
   await page
     .getByRole('searchbox', { name: 'Поиск продуктов' })
     .fill('Рис белый длиннозёрный приготовленный');
-  await expect(page.locator('.catalog-result-row .favorite-heart')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await page.locator('.catalog-result-row .favorite-heart').click();
-  await expect(page.locator('.catalog-result-row .favorite-heart')).toHaveAttribute(
-    'aria-pressed',
-    'false',
-  );
+  await expect(
+    page
+      .locator('.catalog-result-row')
+      .filter({ has: page.locator('[data-product-id="usda-168878"]') })
+      .locator('.favorite-heart'),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page
+    .locator('.catalog-result-row')
+    .filter({ has: page.locator('[data-product-id="usda-168878"]') })
+    .locator('.favorite-heart')
+    .click();
+  await expect(
+    page
+      .locator('.catalog-result-row')
+      .filter({ has: page.locator('[data-product-id="usda-168878"]') })
+      .locator('.favorite-heart'),
+  ).toHaveAttribute('aria-pressed', 'false');
 });
 for (const width of [320, 390])
   test(`favorite composer fits ${width}px with keyboard navigation and theme`, async ({
@@ -213,7 +221,7 @@ test('favorite composer is accessible and new compositions survive JSON export',
   );
   await composer.getByRole('button', { name: '＋ Добавить продукт', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Поиск продуктов' }).fill('Киноа приготовленный');
-  await page.locator('.product-dialog').last().locator('.catalog-pick').click();
+  await page.locator('.product-dialog').last().locator('[data-product-id="usda-168917"]').click();
   await page
     .locator('.product-dialog')
     .last()

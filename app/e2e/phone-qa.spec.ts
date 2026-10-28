@@ -175,7 +175,8 @@ test('отказ камеры не отправляет фото, локальн
   await page.getByRole('button', { name: 'Сфотографировать продукт' }).click();
   await expect(page.getByRole('alert')).toContainText('камер');
   await page.getByLabel('Поиск продуктов').fill('гречка');
-  await expect(page.locator('.catalog-pick')).toHaveCount(2);
+  await expect(page.locator('[data-product-id="usda-170685"]')).toBeVisible();
+  await expect(page.locator('[data-product-id="usda-170686"]')).toBeVisible();
   expect(analyses).toBe(0);
 });
 test('отмена камеры не отправляет запрос и выбора галереи нет', async ({ page }) => {
