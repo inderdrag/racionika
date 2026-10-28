@@ -39,13 +39,14 @@ export function App() {
   const backHandler = useRef<() => boolean>(() => false);
   useEffect(() => {
     backHandler.current = () => {
-      if (open) {
-        closeDialog();
+      const dialogs = [...document.querySelectorAll<HTMLDialogElement>('dialog[open]')];
+      const top = dialogs.at(-1);
+      if (top && (!open || dialogs.length > 1)) {
+        top.dispatchEvent(new Event('cancel', { cancelable: true }));
         return true;
       }
-      const childDialog = document.querySelector<HTMLDialogElement>('dialog[open]');
-      if (childDialog) {
-        childDialog.dispatchEvent(new Event('cancel', { cancelable: true }));
+      if (open) {
+        closeDialog();
         return true;
       }
       if (editingProfile) {
