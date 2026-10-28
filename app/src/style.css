@@ -2035,3 +2035,143 @@ input[type='time']::-webkit-datetime-edit {
   width: 100%;
   margin-top: 8px;
 }
+
+/* Favorites and a portion composer share the existing product search/camera. */
+.favorite-title,
+.catalog-result-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.favorite-title > h3,
+.favorite-title > strong,
+.favorite-title > .meal-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.favorite-control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  position: relative;
+}
+.favorite-heart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0.65rem;
+  background: transparent;
+  color: var(--accent);
+  border: 0;
+  border-radius: 50%;
+}
+.favorite-heart[aria-pressed='true'] {
+  background: var(--surface-soft);
+}
+.favorite-error {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 2;
+  min-width: 170px;
+  padding: 0.5rem;
+  background: var(--surface);
+  color: var(--danger);
+}
+.catalog-result-row .catalog-pick {
+  flex: 1;
+  min-width: 0;
+}
+.composer-ingredients {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.composer-ingredients > li {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.composer-portion {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  justify-content: space-between;
+}
+.composer-portion label {
+  flex: 1;
+  min-width: 0;
+}
+.composer-portion strong {
+  flex-shrink: 0;
+  padding-bottom: 0.75rem;
+}
+.meal-composer .catalog-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.meal-composer .catalog-total > span {
+  font-weight: 600;
+}
+.meal-composer > .primary {
+  margin-top: 1rem;
+}
+.composer-name {
+  margin-top: 1rem;
+}
+.library-list > li > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.library-list > li > button {
+  min-width: 48px;
+  min-height: 48px;
+}
+@media (max-width: 360px) {
+  .diary-entry-main {
+    flex-wrap: wrap;
+  }
+  .diary-entry-main .meal-edit {
+    flex-basis: calc(100% - 112px);
+  }
+  .composer-portion {
+    flex-wrap: wrap;
+  }
+}
+
+/* Keep the product name readable: portion/source and energy have their own line. */
+.diary-entry-main .meal-edit {
+  display: block;
+}
+.diary-entry-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+.diary-entry-info > small {
+  flex: 1 1 120px;
+  min-width: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+}
+.diary-entry-info > b {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+.diary-entry-info > b small {
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 400;
+}
