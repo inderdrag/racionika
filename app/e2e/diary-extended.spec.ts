@@ -85,7 +85,7 @@ test('копирование на дату создаёт отдельную з�
 test('избранное переживает удаление исходной записи и добавляется без ИИ', async ({ page }) => {
   await meal(page);
   await actions(page);
-  await page.getByRole('button', { name: 'В избранное', exact: true }).click();
+  await page.locator('.diary-entry .favorite-heart').click();
   await expect(page.locator('.library-list li')).toHaveCount(1);
   await page.getByRole('button', { name: 'Удалить Овсянка', exact: true }).click();
   await expect(page.locator('.meals li')).toHaveCount(0);
@@ -98,11 +98,11 @@ test('избранное переживает удаление исходной 
     return route.abort();
   });
   await page.getByRole('button', { name: 'Добавить Овсянка из списка' }).click();
-  await page.getByRole('combobox', { name: 'Приём пищи', exact: true }).selectOption('lunch');
+  await page.getByLabel('Куда добавить', { exact: true }).selectOption('lunch');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Обед', exact: true })).toContainText('Овсянка');
   expect(requests).toBe(0);
-  await page.getByRole('button', { name: 'Убрать Овсянка из избранного' }).click();
+  await page.locator('.library-list .favorite-heart').click();
   await expect(page.locator('.library-list li')).toHaveCount(0);
   await expect(page.locator('.meals li')).toHaveCount(1);
 });
@@ -113,6 +113,7 @@ test('недавние позволяют повторить блюдо, оди�
   await page.getByRole('button', { name: 'Недавние', exact: true }).click();
   await expect(page.locator('.library-list li')).toHaveCount(1);
   await page.getByRole('button', { name: 'Добавить Овсянка из списка' }).click();
+  await page.getByLabel('Куда добавить', { exact: true }).selectOption('lunch');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toHaveCount(2);
   await expect(page.locator('.library-list li')).toHaveCount(1);
@@ -123,7 +124,7 @@ test('детали и избранное сохраняются в экспор�
   await meal(page);
   await details(page);
   await actions(page);
-  await page.getByRole('button', { name: 'В избранное', exact: true }).click();
+  await page.locator('.diary-entry .favorite-heart').click();
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Экспортировать JSON' }).click();
@@ -136,7 +137,7 @@ test('детали и избранное сохраняются в экспор�
   expect(data.foodEntries[0].mealType).toBe('breakfast');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Удалить Овсянка', exact: true }).click();
-  await page.getByRole('button', { name: 'Убрать Овсянка из избранного' }).click();
+  await page.locator('.library-list .favorite-heart').click();
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   await page
     .locator('input[type=file]')
