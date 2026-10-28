@@ -22,6 +22,8 @@ import org.json.JSONObject;
 /** Persistent AlarmManager scheduler. Receivers work without JS or a running Activity. */
 public final class ReminderEngine {
   private static final String STORE = "racionika_reminders_v2";
+  private static final String ACK = "com.inderdrag.racionika.MEAL_ACK";
+  private static final String SNOOZE = "com.inderdrag.racionika.MEAL_SNOOZE";
   private static final String ACTION = "com.inderdrag.racionika.REMINDER";
 
   private ReminderEngine() {}
@@ -157,6 +159,7 @@ public final class ReminderEngine {
         p.edit()
             .putString("items", items.toString())
             .putString("chains", "[]")
+            .putString("displayed", "{}")
             .putString("generation", java.util.UUID.randomUUID().toString());
     if (items.length() == 0) {
       edit.remove("progress").remove("testAt");
@@ -270,14 +273,63 @@ public final class ReminderEngine {
     return nextSlot(c, "meals", after);
   }
 
+  private static PendingIntent mealAction(
+      Context c, JSONObject item, long occurrence, String action) {
+    Intent intent =
+        new Intent(c, ReminderReceiver.class)
+            .setAction(action)
+            .putExtra("id", item.optInt("id"))
+            .putExtra("occurrence", occurrence)
+            .putExtra("generation", prefs(c).getString("generation", ""));
+    return PendingIntent.getBroadcast(
+        c,
+        (action.equals(ACK) ? 400000 : 500000) + item.optInt("id"),
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+  }
+
+  private static void handleMealAction(Context c, Intent intent) throws JSONException {
+    JSONObject item = find(c, intent.getIntExtra("id", -1));
+    if (item == null || !item.optString("channel").equals("meals")) return;
+    long now = System.currentTimeMillis(), occurrence = intent.getLongExtra("occurrence", 0);
+    JSONObject displayed = new JSONObject(prefs(c).getString("displayed", "{}"));
+    JSONObject row = displayed.optJSONObject(String.valueOf(item.optInt("id")));
+    if (row == null
+        || row.optLong("occurrence") != occurrence
+        || occurrence <= 0
+        || now < occurrence
+        || nextMeal(c, occurrence) <= now) return;
+    clearChain(c, item);
+    if (SNOOZE.equals(intent.getAction())
+        && allowed(item, now)
+        && !complete(c, item, occurrence, now)) {
+      long due =
+          ReminderRules.snooze(
+              now, nextMeal(c, occurrence), allowed(item, now + ReminderRules.HALF_HOUR));
+      if (due > 0) {
+        int stage = Math.min(2, row.optInt("stage") + 1);
+        saveChain(c, item, stage, occurrence, due);
+        schedule(c, item, stage, occurrence, due);
+      }
+    }
+    displayed.remove(String.valueOf(item.optInt("id")));
+    if (!prefs(c).edit().putString("displayed", displayed.toString()).commit())
+      throw new IllegalStateException("Storage failed");
+    NotificationManagerCompat.from(c).cancel(item.optInt("id"));
+  }
+
   public static synchronized void receive(Context c, Intent intent) throws JSONException {
     SharedPreferences p = prefs(c);
     if (!p.getString("generation", "").equals(intent.getStringExtra("generation"))) return;
+    if (ACK.equals(intent.getAction()) || SNOOZE.equals(intent.getAction())) {
+      handleMealAction(c, intent);
+      return;
+    }
     if (intent.getIntExtra("id", -1) == 39999) {
       long due = intent.getLongExtra("due", 0);
       if (due == p.getLong("testAt", 0)) {
         p.edit().remove("testAt").commit();
-        if (ReminderRules.fresh(due, System.currentTimeMillis())) show(c, testItem(), 0);
+        if (ReminderRules.fresh(due, System.currentTimeMillis())) show(c, testItem(), 0, due);
       }
       return;
     }
@@ -307,7 +359,7 @@ public final class ReminderEngine {
     if (!ReminderRules.fresh(due, now) || !allowed(item, now) || complete(c, item, occurrence, now))
       return;
     if (nextSlot(c, item.optString("channel"), occurrence) <= now) return;
-    boolean shown = show(c, item, stage);
+    boolean shown = show(c, item, stage, occurrence);
     if (shown
         && item.optString("channel").equals("meals")
         && item.optBoolean("followups", true)
@@ -322,7 +374,8 @@ public final class ReminderEngine {
     }
   }
 
-  private static boolean show(Context c, JSONObject item, int stage) {
+  private static boolean show(Context c, JSONObject item, int stage, long occurrence)
+      throws JSONException {
     if (Build.VERSION.SDK_INT >= 33
         && c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) return false;
@@ -362,8 +415,7 @@ public final class ReminderEngine {
             300000 + item.optInt("id"),
             open,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    manager.notify(
-        item.optInt("id"),
+    NotificationCompat.Builder notification =
         new NotificationCompat.Builder(c, channel)
             .setSmallIcon(R.drawable.ic_stat_leaf)
             .setContentTitle(title)
@@ -371,8 +423,18 @@ public final class ReminderEngine {
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pi)
             .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .build());
+            .setCategory(NotificationCompat.CATEGORY_REMINDER);
+    if (kind.equals("meals")) {
+      JSONObject displayed = new JSONObject(prefs(c).getString("displayed", "{}"));
+      displayed.put(
+          String.valueOf(item.optInt("id")),
+          new JSONObject().put("occurrence", occurrence).put("stage", stage));
+      if (!prefs(c).edit().putString("displayed", displayed.toString()).commit()) return false;
+      notification.addAction(0, "Я уже поел", mealAction(c, item, occurrence, ACK));
+      notification.addAction(0, "Через 30 минут", mealAction(c, item, occurrence, SNOOZE));
+      notification.addAction(0, "Записать еду", pi);
+    }
+    manager.notify(item.optInt("id"), notification.build());
     return true;
   }
 

@@ -57,6 +57,12 @@ public class ReminderPlugin extends Plugin {
   }
 
   @Override
+  public void load() {
+    // Cold start: no onNewIntent callback is fired for the initial launch intent.
+    handleOnNewIntent(getActivity().getIntent());
+  }
+
+  @Override
   protected void handleOnNewIntent(Intent intent) {
     String route = intent.getStringExtra("reminderRoute");
     if (route == null) return;

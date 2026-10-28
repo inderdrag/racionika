@@ -74,6 +74,11 @@ public final class ReminderRules {
     return stage >= 0 && stage < 2 && allowed && due < nextMeal ? due : -1;
   }
 
+  public static long snooze(long now, long nextMeal, boolean allowed) {
+    long due = now + HALF_HOUR;
+    return allowed && due < nextMeal ? due : -1;
+  }
+
   public static boolean fresh(long due, long now) {
     return due <= now && now - due <= 90 * 60 * 1000L;
   }
