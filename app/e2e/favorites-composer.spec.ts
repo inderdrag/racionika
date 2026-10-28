@@ -176,7 +176,9 @@ test('hearts beside search results and saved diary entries replace old actions',
   );
 });
 for (const width of [320, 390])
-  test(`favorite composer fits ${width}px with keyboard navigation and theme`, async ({ page }) => {
+  test(`favorite composer fits ${width}px with keyboard navigation and theme`, async ({
+    page,
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 700 });
     await like(page);
     await page.locator('.library-list button.secondary').click();
@@ -191,7 +193,7 @@ for (const width of [320, 390])
     await composer.getByLabel('Масса порции, г', { exact: true }).fill('200');
     await composer.getByLabel('Куда добавить', { exact: true }).selectOption('dinner');
     await expect(composer.locator('.catalog-total')).toContainText('260');
-    await page.screenshot({ path: `/data/favorites-${width}.png` });
+    await page.screenshot({ path: testInfo.outputPath(`favorites-${width}.png`) });
     await page.keyboard.press('Escape');
     await expect(composer).toHaveCount(0);
     await expect(page.locator('.library-list button.secondary')).toBeFocused();

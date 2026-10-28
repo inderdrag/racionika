@@ -123,7 +123,7 @@ test('при открытии только строка поиска и каме
   await page.getByLabel('Поиск продуктов').press('Enter');
   expect(network).toBe(0);
 });
-test('камера находится внутри строки справа на узком экране', async ({ page }) => {
+test('камера находится внутри строки справа на узком экране', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');
   await open(page);
@@ -134,7 +134,7 @@ test('камера находится внутри строки справа н�
   expect(camera!.x + camera!.width).toBeLessThanOrEqual(row!.x + row!.width);
   expect(camera!.y).toBeGreaterThanOrEqual(input!.y);
   expect(camera!.height).toBeGreaterThanOrEqual(44);
-  await page.screenshot({ path: '/data/product-search-light.png' });
+  await page.screenshot({ path: testInfo.outputPath('product-search-light.png') });
   await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
-  await page.screenshot({ path: '/data/product-search-dark.png' });
+  await page.screenshot({ path: testInfo.outputPath('product-search-dark.png') });
 });

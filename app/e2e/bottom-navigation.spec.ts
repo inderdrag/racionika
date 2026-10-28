@@ -19,7 +19,9 @@ for (const layout of [
   { width: 740, height: 360, native: true, font: 100 },
   { width: 800, height: 1280, native: true, font: 150 },
 ]) {
-  test(`панель видна при прокрутке и переключении: ${JSON.stringify(layout)}`, async ({ page }) => {
+  test(`панель видна при прокрутке и переключении: ${JSON.stringify(layout)}`, async ({
+    page,
+  }, testInfo) => {
     await page.setViewportSize({ width: layout.width, height: layout.height });
     await page.route('**/v1/config', (r) =>
       r.fulfill({
@@ -57,7 +59,8 @@ for (const layout of [
       await main.evaluate((el) => el.scrollTo(0, el.scrollHeight));
       await navVisible(page);
     }
-    if (layout.width === 390) await page.screenshot({ path: '/data/bottom-nav-profile.png' });
+    if (layout.width === 390)
+      await page.screenshot({ path: testInfo.outputPath('bottom-nav-profile.png') });
   });
 }
 test('панель остаётся видна после смены ориентации', async ({ page }) => {
