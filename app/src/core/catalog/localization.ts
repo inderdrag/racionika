@@ -1,10 +1,24 @@
 /** Source-gated language corrections; nutrients and original descriptions never change. */
 export function improveUsdaName(name: string, original: string): string {
+  const spices: Record<string, string> = {
+    'spices, mace, ground': 'Мускатный цвет молотый',
+    'spices, mustard seed, ground': 'Горчица, молотые семена',
+    'spices, sage, ground': 'Шалфей молотый',
+    'spices, savory, ground': 'Чабер молотый',
+    'spices, allspice, ground': 'Перец душистый молотый',
+    'spices, cloves, ground': 'Гвоздика молотая',
+    'spices, nutmeg, ground': 'Мускатный орех молотый',
+  };
+  if (spices[original.toLowerCase()]) return spices[original.toLowerCase()];
   let result = name;
   const correct = (source: RegExp, translated: RegExp, replacement: string) => {
     if (source.test(original)) result = result.replace(translated, replacement);
   };
-  correct(/\bground\b/i, /земля|земельн(?:ый|ая|ое)/giu, 'фарш');
+  correct(
+    /(?=.*\bground\b)(?=.*\b(?:beef|pork|turkey|chicken|lamb|veal|bison|buffalo|elk|venison|meat|game|sausage|luncheon|ham|emu|ostrich)\b)/i,
+    /земля|земельн(?:ый|ая|ое)/giu,
+    'фарш',
+  );
   correct(/\bfree range\b/i, /свободный (?:выбор|ассортимент|диапазон)/giu, 'свободный выпас');
   correct(/\blight meat\b/i, /легк(?:ое|ого) мяс[оа]/giu, 'белое мясо');
   correct(/\btrimmed\b/i, /подстриженн/giu, 'зачищенн');

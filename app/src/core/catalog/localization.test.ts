@@ -10,6 +10,13 @@ describe('русские названия с проверкой исходног
       'Куриная голень',
     );
     expect(improveUsdaName('Куриные самородки', 'Chicken nuggets')).toBe('Куриные наггетсы');
+    expect(improveUsdaName('Специи, гвоздика, земля', 'Spices, cloves, ground')).toBe(
+      'Гвоздика молотая',
+    );
+    expect(improveUsdaName('Специи, все специи, земля', 'Spices, allspice, ground')).toBe(
+      'Перец душистый молотый',
+    );
+    expect(improveUsdaName('Кофе, земля', 'Coffee, ground')).not.toContain('фарш');
   });
   it('не меняет название без подтверждения источника и не выдаёт cottage cheese за творог', () => {
     expect(improveUsdaName('Сыр, творог, с фруктами', 'Cottage cheese with fruit')).toBe(
