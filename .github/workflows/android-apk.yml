@@ -109,10 +109,18 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
       - uses: actions/download-artifact@v4
         with:
           name: racionika-release-apk
           path: release
+      - name: Prepare release title and description
+        run: node scripts/release-notes.mjs
       - name: Attach APK to a new draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -122,19 +130,12 @@ jobs:
           set -euo pipefail
           test -s release/app-release.apk
           TAG="android-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          cat > release-notes.md <<EOF_NOTES
-          Android APK с постоянной release-подписью. Это черновик, публикация выполняется вручную.
-
-          Установочный файл: app-release.apk (скачивать и устанавливать без распаковки).
-          Для ИИ требуется интернет. Ключ AnyModel в APK не включён; код доступа не вводится.
-          Последующие APK с этим же ключом, package ID и возрастающим versionCode можно устанавливать поверх приложения. Старые debug-сборки могли иметь другой ключ: перед первым переходом сохраните JSON-копию, не удаляйте приложение без копии.
-
-          Коммит: ${GITHUB_SHA}
-          Сборка: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          EOF_NOTES
+          TITLE=$(node -p 'JSON.parse(require("fs").readFileSync("release/metadata.json", "utf8")).title')
+          ASSET=$(node -p 'JSON.parse(require("fs").readFileSync("release/metadata.json", "utf8")).assetName')
+          cp release/app-release.apk "release/$ASSET"
           gh release create "$TAG" \
-            'release/app-release.apk#Рационика — установочный APK' \
+            "release/$ASSET#Рационика — установочный APK" \
             --draft \
             --target "$GITHUB_SHA" \
-            --title "Рационика — Android APK #${GITHUB_RUN_NUMBER} (попытка ${GITHUB_RUN_ATTEMPT})" \
-            --notes-file release-notes.md
+            --title "$TITLE" \
+            --notes-file release/release-notes.md
