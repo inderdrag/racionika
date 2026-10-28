@@ -35,7 +35,7 @@ export async function openEntryEditor(page: Page) {
   await page
     .getByRole('searchbox', { name: 'Поиск продуктов', exact: true })
     .fill('Рис белый длиннозёрный приготовленный');
-  await page.locator('.catalog-pick').click();
+  await page.locator('[data-product-id="usda-168878"]').click();
   await page.getByLabel('Куда добавить', { exact: true }).selectOption('lunch');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await page.locator('.meal-edit').filter({ hasText: 'Рис белый длиннозёрный' }).click();

@@ -121,8 +121,8 @@ export function SettingsExtras() {
         <summary>О приложении и лицензии</summary>
         <p>Рационика. Локальный дневник питания.</p>
         <p className="subtle">
-          USDA FoodData Central · SR Legacy 2018. Данные USDA — общественное достояние. Русские
-          названия локализованы в приложении.
+          USDA FoodData Central · SR Legacy и FNDDS. Данные — CC0. Названия расширенной базы
+          переведены автоматически; оригинал доступен в источнике.
         </p>
         <p className="subtle">
           Open Food Facts: база ODbL 1.0, содержимое отдельных записей — Database Contents License.
