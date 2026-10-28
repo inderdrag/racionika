@@ -1,6 +1,7 @@
 import { useDialogFocus } from './shared/ui/useDialogFocus';
 import { usePreferences, waterText, waterUnitLabel, waterValue, waterMl } from './core/preferences';
 import { loadReminderProgress } from './core/notifications/progress';
+import { DiaryDate } from './features/DiaryDate';
 import { DiaryMeals } from './features/DiaryMeals';
 import { mealMetadata } from './core/diary';
 import { loadProfile, personalPlan } from './core/profile';
@@ -171,7 +172,10 @@ export function App() {
       .then(async (p) => {
         const stop = await p.notifications.listen((route) => {
           setTab(route);
-          if (route === 'diary') setOpen(true);
+          if (route === 'diary') {
+            setDay(localDay());
+            setOpen(true);
+          }
         });
         if (disposed) stop();
         else cleanup = stop;
@@ -317,15 +321,19 @@ export function App() {
           </div>
           {(tab === 'home' || tab === 'diary') && (
             <>
-              <label className="date-control">
-                <span>{dateText}</span>
-                <input
-                  aria-label="Дата дневника"
-                  type="date"
-                  value={day}
-                  onChange={(event) => event.target.value && setDay(event.target.value)}
-                />
-              </label>
+              {tab === 'diary' ? (
+                <DiaryDate day={day} onChange={setDay} />
+              ) : (
+                <label className="date-control">
+                  <span>{dateText}</span>
+                  <input
+                    aria-label="Дата дневника"
+                    type="date"
+                    value={day}
+                    onChange={(event) => event.target.value && setDay(event.target.value)}
+                  />
+                </label>
+              )}
               <section className="card energy">
                 <div className="section-head">
                   <h2>Энергия дня</h2>
