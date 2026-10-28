@@ -596,16 +596,28 @@ dialog > .subtle {
     max-width: 480px;
     margin: auto;
     box-shadow: none;
+    height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .phone > main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .phone > .topbar,
+  .phone > .fab,
+  .phone > .bottom-nav {
+    flex-shrink: 0;
   }
   .topbar {
     padding-top: calc(20px + env(safe-area-inset-top));
   }
-  main {
-    min-height: calc(100dvh - 252px);
-  }
   .bottom-nav {
-    position: sticky;
-    bottom: 0;
+    position: relative;
+    z-index: 10;
   }
 }
 @media (max-width: 374px) {
@@ -642,7 +654,7 @@ dialog > .subtle {
   .phone {
     height: calc(100dvh - 96px);
     max-height: 1000px;
-    min-height: 640px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
   }
@@ -1938,23 +1950,30 @@ input[type='time']::-webkit-datetime-edit {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  height: auto;
+  height: 100dvh;
   max-height: none;
-  min-height: 100dvh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 :root[data-native='true'] main {
   min-height: 0;
   flex: 1;
-  overflow: visible;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 :root[data-native='true'] .topbar {
   padding-top: calc(20px + env(safe-area-inset-top));
 }
+/* Only main scrolls; navigation keeps its own layout space and never covers content. */
+:root[data-native='true'] .topbar,
+:root[data-native='true'] .fab,
 :root[data-native='true'] .bottom-nav {
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
+}
+:root[data-native='true'] .bottom-nav {
+  position: relative;
+  z-index: 10;
 }
 
 /* Reserve one control row so waiting/cancel/clear do not resize the card. */
