@@ -72,7 +72,7 @@ test('качество по умолчанию применяется к нов�
 }) => {
   await profile(page);
   await page
-    .getByRole('combobox', { name: 'Качество распознавания по умолчанию', exact: true })
+    .getByRole('combobox', { name: 'Качество распознавания', exact: true })
     .selectOption('accurate');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await page.getByRole('button', { name: 'Добавить еду', exact: true }).click();

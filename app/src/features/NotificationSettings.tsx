@@ -49,9 +49,7 @@ export function NotificationSettings() {
   return (
     <section className="card notification-settings">
       <h2>Напоминания и поддержка</h2>
-      <p className="subtle">
-        Без уведомлений во время сна. Расписание — по местному времени телефона.
-      </p>
+      <p className="subtle">Без уведомлений во время сна.</p>
       <form onSubmit={(event) => void save(event)}>
         <div className="form-grid">
           <label className="field">
@@ -182,8 +180,7 @@ export function NotificationSettings() {
             </label>
             {settings.mealFollowups && (
               <p className="subtle">
-                Через 30 минут — повтор, ещё через 30 — приём не отмечен. Запись еды отменяет
-                повторы.
+                Повтор через 30 минут, через час — «Приём не отмечен». Запись еды отменяет повторы.
               </p>
             )}
           </>

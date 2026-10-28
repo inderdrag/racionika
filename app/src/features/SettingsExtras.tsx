@@ -50,7 +50,7 @@ export function SettingsExtras() {
           </label>
         </div>
         <label className="field">
-          Качество распознавания по умолчанию
+          Качество распознавания
           <select
             value={preferences.quality}
             onChange={(e) => patch({ quality: e.target.value as 'fast' | 'accurate' })}
@@ -59,12 +59,6 @@ export function SettingsExtras() {
             <option value="accurate">Точнее</option>
           </select>
         </label>
-        <p className="subtle">
-          «Точнее» использует модель, настроенную на сервере; расход и результат зависят от модели.
-        </p>
-        <p className="subtle">
-          Порции — в граммах, энергия — в ккал. Темп изменения веса — в кг за неделю.
-        </p>
       </section>
       <section className="card profile-card">
         <h2>CSV-отчёты</h2>
@@ -117,10 +111,7 @@ export function SettingsExtras() {
               />
             </label>
           </div>
-          <p className="subtle">
-            Для Excel: UTF-8, разделитель «;». Единицы в файле: кг, мл, ккал, г. Пропуски пустые.
-            CSV — отчёт, не резервная копия.
-          </p>
+          <p className="subtle">Для Excel. Для восстановления данных используйте JSON.</p>
           <button className="secondary" disabled={busy}>
             Сохранить CSV
           </button>
