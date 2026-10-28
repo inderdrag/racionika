@@ -2222,3 +2222,97 @@ main[data-tab='diary'] {
     white-space: nowrap;
   }
 }
+
+/* Compact day navigation and source-backed household measures. */
+.diary-date {
+  margin-bottom: 16px;
+}
+.day-navigation,
+.calendar-month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.day-navigation > button {
+  min-height: 44px;
+}
+.day-navigation > .secondary {
+  flex: 0 0 44px;
+  padding: 0;
+  font-size: 1.5rem;
+}
+.calendar-toggle {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.today-button {
+  display: block;
+  margin: 4px auto;
+}
+.diary-calendar {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.calendar-month strong {
+  text-align: center;
+  min-width: 0;
+}
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin: 12px 0;
+}
+.calendar-days > span {
+  text-align: center;
+  font-size: 0.8rem;
+}
+.calendar-day {
+  padding: 4px 0;
+  min-height: 44px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  min-width: 0;
+}
+.calendar-day span {
+  display: block;
+  line-height: 0.6;
+  color: var(--accent);
+}
+.calendar-day[aria-pressed='true'] {
+  border-color: currentColor;
+  font-weight: 700;
+}
+.portion-input {
+  margin: 12px 0;
+}
+.portion-input .field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.portion-measures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.portion-measures input,
+.portion-input select {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 280px) {
+  .portion-measures {
+    grid-template-columns: 1fr;
+  }
+  .diary-calendar {
+    padding: 4px;
+  }
+}
