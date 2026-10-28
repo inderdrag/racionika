@@ -21,8 +21,13 @@ Apache Cordova (Apache-2.0) и нативные части Capacitor (MIT).
 AAR/JAR внутри APK. При публичном распространении нужно сверить также
 транзитивные Gradle-зависимости и их NOTICE.
 
-Данные USDA FoodData Central SR Legacy 2018 — общественное достояние.
-Источник: https://fdc.nal.usda.gov/ . Русские названия локализованы.
+Данные USDA FoodData Central SR Legacy 2018 и FNDDS 2021–2023 опубликованы
+под CC0 1.0 Universal: https://fdc.nal.usda.gov/api-guide .
+505 названий локализованы в исходной выборке; названия расширения переведены
+автоматически (Argos English–Russian 1.9) с сохранением оригиналов.
+Модель перевода, её обучающие наборы и ML-библиотеки не распространяются
+в приложении и не нужны для сборки или поиска. Сведения о переводе и
+контрольная сумма использованной модели — в extended-manifest.json.
 Open Food Facts: ODbL 1.0 (база), Database Contents License (отдельное
 содержимое), CC BY-SA 3.0 (фотографии, в приложении не используются).
 Условия: https://world.openfoodfacts.org/terms-of-use .

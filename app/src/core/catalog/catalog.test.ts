@@ -1,3 +1,4 @@
+import manifest from '../../../../scripts/catalog/extended-manifest.json';
 import { describe, expect, it } from 'vitest';
 import { catalog, normalizeFoodQuery, searchCatalog } from './index';
 import { CatalogProductSchema, CatalogSourceSchema, catalogSourceUrl } from './types';
@@ -7,8 +8,9 @@ import type { FoodEntry } from '../db';
 import { scaleNutrients } from '../nutrition/meal';
 const rice = catalog.find((p) => p.source.id === '168878')!;
 describe('Локальный каталог USDA', () => {
-  it('содержит 400–600 различных записей с полными КБЖУ и источником', () => {
-    expect(catalog).toHaveLength(505);
+  it('содержит больше 10000 разных записей с полными КБЖУ и источником', () => {
+    expect(catalog).toHaveLength(manifest.count);
+    expect(catalog.length).toBeGreaterThanOrEqual(10000);
     expect(new Set(catalog.map((p) => p.id)).size).toBe(catalog.length);
     expect(new Set(catalog.map((p) => p.name)).size).toBe(catalog.length);
     for (const p of catalog) {
@@ -16,7 +18,7 @@ describe('Локальный каталог USDA', () => {
       expect(p.source.provider).toBe('usda');
       expect(p.id).toBe('usda-' + p.source.id);
       expect(p.source.description.length).toBeGreaterThan(2);
-      expect(p.source.release).toBe('SR Legacy 2018-04');
+      expect(['SR Legacy 2018-04', 'FNDDS 2021–2023 (2024-10)']).toContain(p.source.release);
     }
   });
   it('не подменяет сырую крупу готовой: разные записи, массы и калорийность', () => {
@@ -49,7 +51,9 @@ describe('Локальный каталог USDA', () => {
     const result = searchCatalog('рис', 'Крупы и макароны', 'cooked');
     expect(result.length).toBeGreaterThan(0);
     expect(result.every((p) => p.form === 'cooked')).toBe(true);
-    expect(searchCatalog('рис', 'Рыба и морепродукты', 'cooked')).toEqual([]);
+    expect(
+      searchCatalog('рис', 'Рыба и морепродукты', 'cooked').some((p) => p.id === rice.id),
+    ).toBe(false);
   });
   it('URL источника строится из валидного ID, не из пользовательской ссылки', () => {
     expect(catalogSourceUrl(rice.source)).toBe(
@@ -85,4 +89,23 @@ describe('Локальный каталог USDA', () => {
     );
     expect(dishKey(entry)).not.toBe(dishKey({ ...entry, catalogSource: undefined }));
   });
+});
+
+it('сохраняет разные варианты и ищет продукты расширения по исходному ID и названию', () => {
+  const expanded = catalog.find((p) => p.source.release.startsWith('FNDDS'))!;
+  expect(expanded).toBeDefined();
+  expect(searchCatalog(expanded.source.id).some((p) => p.id === expanded.id)).toBe(true);
+  expect(searchCatalog(expanded.name).some((p) => p.id === expanded.id)).toBe(true);
+  expect(catalogSourceUrl(expanded.source)).toContain(expanded.source.id);
+  expect(searchCatalog('молоко').some((p) => p.source.release.startsWith('FNDDS'))).toBe(true);
+});
+it('нормализует синонимы и хранит результаты в ограниченном кеше без мутаций', () => {
+  const first = searchCatalog('курица');
+  expect(first.length).toBeGreaterThan(20);
+  first.length = 0;
+  expect(searchCatalog('курица').length).toBeGreaterThan(20);
+  expect(searchCatalog('КУРИЦА')).toEqual(searchCatalog('курица'));
+  expect(searchCatalog('rice cooked').some((p) => p.id === rice.id)).toBe(true);
+  for (let i = 0; i < 40; i++) searchCatalog(String(i));
+  expect(searchCatalog('гречка').some((p) => p.source.id === '170685')).toBe(true);
 });

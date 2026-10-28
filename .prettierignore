@@ -3,3 +3,6 @@ dist
 package-lock.json
 app/android
 docs/REQUIREMENTS.original.md
+
+# Materialized offline catalog; reproducible from checksum-pinned packed sources.
+app/src/core/catalog/generated.json

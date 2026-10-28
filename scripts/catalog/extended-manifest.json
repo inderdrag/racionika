@@ -1,0 +1,115 @@
+{
+  "format": "racionika-catalog-tuples-v1",
+  "catalogVersion": 2,
+  "count": 12632,
+  "curatedCount": 505,
+  "expandedCount": 12127,
+  "packedSha256": "e78e73bf806d1b781ca6b7f4e76d8e68c00f50f359db9ce15dd9daa16c87c01d",
+  "unpackedSha256": "a6f60d679f3922bade33f50b7644b09d770c5593d89798847e66ced257ef102b",
+  "unpackedBytes": 2481131,
+  "packedBytes": 456037,
+  "parts": [
+    {
+      "path": "packed/part-000.b64",
+      "sha256": "796ff2afd44f254e457d585c88ceed1a6210a6f0ded16922eeec200aef3dee85"
+    },
+    {
+      "path": "packed/part-001.b64",
+      "sha256": "937f89dacdddb89c7e7b6f03c8b621d4ef17843248c3c771081481895902ea02"
+    },
+    {
+      "path": "packed/part-002.b64",
+      "sha256": "2e6ca46af7c7c39ead705e808d66e86f315d6622553d50d33a6508b58dc93a08"
+    },
+    {
+      "path": "packed/part-003.b64",
+      "sha256": "ecafb0d841df430d0da45ffcfe87da341887e7b76dc21a5a6010643451b8f069"
+    },
+    {
+      "path": "packed/part-004.b64",
+      "sha256": "9d7b203703e775ccf3dd40245bb78032a6c9981efdc9e5fbfd26bddd1705b15a"
+    },
+    {
+      "path": "packed/part-005.b64",
+      "sha256": "557c6790ed83e095b078abdbcea47e1aa6ffd564f72da7fc53c293ebae7fa69c"
+    },
+    {
+      "path": "packed/part-006.b64",
+      "sha256": "1e1ca72d28f511b3a84f3d4fbdd5fa24492905f6348127fd9277cf3ff1b689e4"
+    },
+    {
+      "path": "packed/part-007.b64",
+      "sha256": "f1c02c3c746edac6356d34776886bb3b708226f273c7a1b4b46c368ac5872474"
+    },
+    {
+      "path": "packed/part-008.b64",
+      "sha256": "c746e4d9b5bfa5b0a9bab0261621084c2ee7e0e5b2ce859ec56074a4e64d5119"
+    },
+    {
+      "path": "packed/part-009.b64",
+      "sha256": "8afc46251e795a49c33acd97639c742d4e30d791a1273ad52132092e18ada77a"
+    },
+    {
+      "path": "packed/part-010.b64",
+      "sha256": "8083465839c5b597883b1dea5b5a4c6eca85aec8dc008079b0fdf7bfbe138f29"
+    },
+    {
+      "path": "packed/part-011.b64",
+      "sha256": "d7374dd842a5df3593c4aab6d1769295bf42f82747fe8682e44a20d8b3a69845"
+    },
+    {
+      "path": "packed/part-012.b64",
+      "sha256": "f2567943c7de7b480015a30cede9a03e716fde4ddbc9fa7c782b2d176108c987"
+    }
+  ],
+  "sources": [
+    {
+      "type": "sr",
+      "release": "SR Legacy 2018-04",
+      "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip",
+      "archiveSha256": "b80817294b8850530aaedf2e515c02593b1824f763a0ff356e5c2081643e6fd0",
+      "files": {
+        "food.csv": "de8b0390058db4f102368c9fbdfde144790b480ff4cb0507c0e060ef99805dee",
+        "food_nutrient.csv": "6d07e6fc062b09750c4d95112be5a5cdb56a2346efcfd0c96b7a7d705812d4bd",
+        "nutrient.csv": "466ab9d011094cc1ad8d939b246693988b56817c42d0e40a98820723695c6084"
+      }
+    },
+    {
+      "type": "fndds",
+      "release": "FNDDS 2021–2023 (2024-10)",
+      "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip",
+      "archiveSha256": "dfb06ae7ddc397ccd570b91c14b75438ab2ba39f64f22d321f61d4a52a77f3eb",
+      "files": {
+        "surveyDownload.json": "included in checksum-pinned ZIP"
+      }
+    }
+  ],
+  "license": {
+    "name": "CC0 1.0 Universal",
+    "url": "https://fdc.nal.usda.gov/api-guide"
+  },
+  "translation": {
+    "method": "Argos English–Russian 1.9; source-guided preparation labels; original English retained",
+    "modelUrl": "https://argos-net.com/v1/translate-en_ru-1_9.argosmodel",
+    "modelSha256": "591d743ae103752b88ffc38785c50421320f4eff93c8967e0d3d2e14d4e27811",
+    "humanLocalizedRecords": 505,
+    "machineLocalizedRecords": 12127,
+    "nameCollisionsDisambiguatedBySourceId": 88
+  },
+  "selection": {
+    "curated": 505,
+    "expanded": 12127,
+    "total": 12632,
+    "excluded": {
+      "incomplete_nutrients": 1,
+      "infant_food_not_adult_catalog": 489,
+      "duplicate_description": 101,
+      "outside_nutrient_schema": 2,
+      "existing_curated_id": 505
+    },
+    "sources": {
+      "fndds": 5247,
+      "sr": 6880
+    }
+  }
+}

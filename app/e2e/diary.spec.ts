@@ -195,7 +195,8 @@ test('серверная ошибка квоты понятна и локаль�
   await captureFood(page);
   await expect(page.getByRole('alert')).toContainText('Лимит ИИ');
   await page.getByLabel('Поиск продуктов').fill('гречка');
-  await expect(page.locator('.catalog-pick')).toHaveCount(2);
+  await expect(page.locator('[data-product-id="usda-170685"]')).toBeVisible();
+  await expect(page.locator('[data-product-id="usda-170686"]')).toBeVisible();
 });
 test('ответ «не еда» не сохраняется в дневник', async ({ page }) => {
   await page.route('**/v1/analyze-meal', async (route) => {

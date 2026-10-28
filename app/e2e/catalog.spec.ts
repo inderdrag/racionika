@@ -32,8 +32,8 @@ test('офлайн-поиск, приготовленный рис, граммо
   await page
     .getByLabel('Поиск продуктов', { exact: true })
     .fill('Рис белый длиннозёрный приготовленный');
-  await expect(page.locator('.catalog-results li')).toHaveCount(1);
-  await page.locator('.catalog-pick').click();
+  await expect(page.locator('[data-product-id="usda-168878"]')).toBeVisible();
+  await page.locator('[data-product-id="usda-168878"]').click();
   await page.getByLabel('Масса, г', { exact: true }).fill('150');
   await expect(page.locator('.catalog-total strong')).toContainText('195');
   await page.getByLabel('Куда добавить', { exact: true }).selectOption('lunch');
@@ -59,7 +59,7 @@ test('правка порции не теряет точные КБЖУ и ис�
   await page
     .getByLabel('Поиск продуктов', { exact: true })
     .fill('Рис белый длиннозёрный приготовленный');
-  await page.locator('.catalog-pick').click();
+  await page.locator('[data-product-id="usda-168878"]').click();
   await page.getByLabel('Куда добавить', { exact: true }).selectOption('dinner');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await page.locator('.meal-edit').click();
@@ -78,7 +78,7 @@ test('источник проходит экспорт и импорт JSON вм
   await page.goto('/');
   await open(page);
   await page.getByLabel('Поиск продуктов', { exact: true }).fill('Киноа приготовленный');
-  await page.locator('.catalog-pick').click();
+  await page.locator('[data-product-id="usda-168917"]').click();
   await page.getByLabel('Куда добавить', { exact: true }).selectOption('breakfast');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await page.locator('.diary-entry details summary').click();
@@ -119,7 +119,8 @@ test('при открытии только строка поиска и каме
   await page.getByLabel('Поиск продуктов').fill('неизвестныйпродукт');
   await expect(page.getByText('Ничего не найдено.', { exact: true })).toBeVisible();
   await page.getByLabel('Поиск продуктов').fill('гречка');
-  await expect(page.locator('.catalog-pick')).toHaveCount(2);
+  await expect(page.locator('[data-product-id="usda-170685"]')).toBeVisible();
+  await expect(page.locator('[data-product-id="usda-170686"]')).toBeVisible();
   await page.getByLabel('Поиск продуктов').press('Enter');
   expect(network).toBe(0);
 });
@@ -137,4 +138,36 @@ test('камера находится внутри строки справа н�
   await page.screenshot({ path: testInfo.outputPath('product-search-light.png') });
   await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
   await page.screenshot({ path: testInfo.outputPath('product-search-dark.png') });
+});
+test('расширенная USDA база: FNDDS офлайн, оригинал, порция и сохранение', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/');
+  await context.setOffline(true);
+  await open(page);
+  await page.getByLabel('Поиск продуктов').fill('Молоко');
+  await expect(page.locator('.catalog-pick')).toHaveCount(20);
+  await page.getByLabel('Поиск продуктов').fill('2705384');
+  await page.locator('[data-product-id="usda-2705384"]').click();
+  await expect(
+    page.getByRole('heading', { name: 'Молоко, вид не уточнён', exact: true }),
+  ).toBeVisible();
+  await page.getByLabel('Масса, г', { exact: true }).fill('200');
+  await expect(page.locator('.catalog-total strong')).toContainText('104');
+  await page.getByLabel('Куда добавить', { exact: true }).selectOption('snack');
+  await page.locator('.catalog-source summary').click();
+  await expect(page.locator('.catalog-source')).toContainText('Milk, NFS');
+  await expect(page.locator('.catalog-source')).toContainText('FNDDS 2021–2023');
+  await expect(page.locator('.catalog-source')).toContainText('переведено автоматически');
+  await expect(page.getByRole('link', { name: 'Открыть источник ↗' })).toHaveAttribute(
+    'href',
+    'https://fdc.nal.usda.gov/food-details/2705384/nutrients',
+  );
+  await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Перекус', exact: true })).toContainText('104');
+  await context.setOffline(false);
+  await page.reload();
+  await page.getByRole('button', { name: 'Дневник', exact: true }).click();
+  await expect(page.locator('.diary-entry')).toContainText('Молоко, вид не уточнён');
 });

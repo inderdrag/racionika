@@ -208,6 +208,7 @@ export function ProductPicker({
                 <button
                   type="button"
                   className="catalog-pick"
+                  data-product-id={product.id}
                   disabled={busy}
                   onClick={() => {
                     setSelected(product);
