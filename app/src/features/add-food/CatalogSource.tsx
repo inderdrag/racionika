@@ -8,6 +8,18 @@ export function CatalogSource({ source }: { source: Source }) {
         {source.provider === 'usda' ? 'Источник: USDA' : 'Источник: Open Food Facts'}
       </summary>
       <p>{source.description}</p>
+      {source.provider === 'off' && (
+        <p className="subtle">
+          Данные сообщества — сверьте упаковку.{' '}
+          <a
+            href="https://opendatacommons.org/licenses/odbl/1-0/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ODbL 1.0
+          </a>
+        </p>
+      )}
       {source.provider === 'usda' && !reviewedIds.has(source.id) && (
         <p className="subtle">Название переведено автоматически. Сверяйте оригинал.</p>
       )}

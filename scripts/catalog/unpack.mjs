@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { materializeRussianCatalog } from './unpack-ru.mjs';
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 export function decodeCatalog(manifest, readPart) {
   if (
@@ -107,5 +108,8 @@ export function materializeCatalog(root = new URL('../../', import.meta.url)) {
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = materializeCatalog();
-  console.log(`Offline USDA catalog ready: ${result.count} records (${result.expanded} expanded).`);
+  const russianCount = materializeRussianCatalog();
+  console.log(
+    `Offline catalog ready: ${result.count + russianCount} records (${result.count} USDA + ${russianCount} Open Food Facts).`,
+  );
 }

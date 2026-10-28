@@ -31,6 +31,12 @@ AAR/JAR внутри APK. При публичном распространени
 Open Food Facts: ODbL 1.0 (база), Database Contents License (отдельное
 содержимое), CC BY-SA 3.0 (фотографии, в приложении не используются).
 Условия: https://world.openfoodfacts.org/terms-of-use .
+Адаптированная офлайн-выборка 7 368 продуктов российского рынка распространяется
+под ODbL 1.0, отдельно от USDA CC0. Вся выборка с источником/лицензиями доступна
+в приложении: Профиль → О приложении и лицензии → Экспорт открытой базы.
+Она не содержит персональных данных. Код приложения остаётся MIT.
+ODbL: https://opendatacommons.org/licenses/odbl/1-0/
+DbCL: https://opendatacommons.org/licenses/dbcl/1-0/
 Подробнее о наборе: `docs/FOOD_CATALOG.md`.
 
 Manrope: SIL Open Font License, Copyright 2019 The Manrope Project Authors.

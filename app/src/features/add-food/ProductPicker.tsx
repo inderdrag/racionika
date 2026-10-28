@@ -226,6 +226,22 @@ export function ProductPicker({
               </li>
             ))}
           </ul>
+          {results.some((p) => p.source.provider === 'off') && (
+            <p className="catalog-attribution subtle">
+              Данные{' '}
+              <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">
+                Open Food Facts
+              </a>{' '}
+              ·{' '}
+              <a
+                href="https://opendatacommons.org/licenses/odbl/1-0/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ODbL
+              </a>
+            </p>
+          )}
           {!results.length && (
             <p className="subtle" role="status">
               Ничего не найдено.
