@@ -1,0 +1,81 @@
+{
+  "format": "racionika-off-ru-v1",
+  "count": 7368,
+  "totalCount": 20000,
+  "baseUsdaCount": 12632,
+  "packedSha256": "0eb2fd0a5b1fb3484cb3ec356239210c68312164d84920afedfe1d180c6afc5d",
+  "unpackedSha256": "067810358aafb75a9e44d645358c3248df878dec2fa44178cad1ae268ec5b618",
+  "parts": [
+    {
+      "path": "ru-packed/part-000.b64",
+      "sha256": "c11d351081743cf8020b883c5df7ac9d131f820e85c364f0970ff3d93998377c"
+    },
+    {
+      "path": "ru-packed/part-001.b64",
+      "sha256": "ffd7058593cdabcf280953dc1b2efd7f6e5223ef40eeeccfa252f8f05c803da4"
+    },
+    {
+      "path": "ru-packed/part-002.b64",
+      "sha256": "b25a7abb6b85e369b0310414fa90de529d04b300910e1c3e59d62a9f57a49cf2"
+    },
+    {
+      "path": "ru-packed/part-003.b64",
+      "sha256": "94bc50f2f2887ec0daa7f3b1f9d50694195cbe0f7f1985ee80acd24e430d8859"
+    },
+    {
+      "path": "ru-packed/part-004.b64",
+      "sha256": "739042d9d7442172d940eef87c64f221733513b9a118da29ac1307ac3f4b7825"
+    },
+    {
+      "path": "ru-packed/part-005.b64",
+      "sha256": "21940518b3313176308a2962d776f76dc685b2e6e9cb3c4f8429fb2ef3c38788"
+    },
+    {
+      "path": "ru-packed/part-006.b64",
+      "sha256": "31309b6d81fb0e60bbafc0c1a60b6712f3ff60e59a45b46915400997846f498c"
+    },
+    {
+      "path": "ru-packed/part-007.b64",
+      "sha256": "d260d596f54ac56db0552d37afda05f5b8cbfca438b53adb32492b19be2486fa"
+    },
+    {
+      "path": "ru-packed/part-008.b64",
+      "sha256": "6c058bd9dcc844f71e5361c3693693bcd044411236f6046a1269c39026b481bb"
+    }
+  ],
+  "source": {
+    "name": "Open Food Facts",
+    "dataset": "https://huggingface.co/datasets/openfoodfacts/product-database",
+    "revision": "dff4f400284a5ca363a7ed2149c1a1b40a92f3ad",
+    "url": "https://huggingface.co/datasets/openfoodfacts/product-database/resolve/dff4f400284a5ca363a7ed2149c1a1b40a92f3ad/food.parquet",
+    "exportSha256": "9df9bcb76741d2ed0096aa8f92214525ba4c6c46f605f83d3d7bb51dc56a58ee",
+    "filter": "list_contains(countries_tags, 'en:russia') OR lang = 'ru'"
+  },
+  "license": {
+    "database": "ODbL 1.0",
+    "contents": "DbCL 1.0",
+    "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+  },
+  "selection": {
+    "eligibleUnique": 13041,
+    "selected": 7368,
+    "excluded": {
+      "no_russian_name": 13488,
+      "incomplete_macros": 11102,
+      "not_100g": 8305,
+      "volume_or_unclear_mass_basis": 944,
+      "outside_nutrient_bounds": 28,
+      "infant_or_supplement": 120,
+      "large_energy_macro_inconsistency": 49,
+      "invalid_barcode": 114,
+      "unusable_or_overlong_name": 4,
+      "wrong_nutrient_units": 1,
+      "placeholder_name": 3,
+      "duplicate_name_brand_or_barcode": 245
+    },
+    "basis": "100g only; known volume packs and ambiguous liquid labels excluded",
+    "russianMarket": 7368,
+    "cyrillicNames": 7368,
+    "brands": 5313
+  }
+}
