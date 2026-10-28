@@ -1,4 +1,4 @@
-import manifest from '../../../../scripts/catalog/extended-manifest.json';
+import manifest from '../../../../scripts/catalog/ru-manifest.json';
 import { describe, expect, it } from 'vitest';
 import { catalog, normalizeFoodQuery, searchCatalog } from './index';
 import { CatalogProductSchema, CatalogSourceSchema, catalogSourceUrl } from './types';
@@ -9,16 +9,20 @@ import { scaleNutrients } from '../nutrition/meal';
 const rice = catalog.find((p) => p.source.id === '168878')!;
 describe('Локальный каталог USDA', () => {
   it('содержит больше 10000 разных записей с полными КБЖУ и источником', () => {
-    expect(catalog).toHaveLength(manifest.count);
+    expect(catalog).toHaveLength(manifest.totalCount);
     expect(catalog.length).toBeGreaterThanOrEqual(10000);
     expect(new Set(catalog.map((p) => p.id)).size).toBe(catalog.length);
     expect(new Set(catalog.map((p) => p.name)).size).toBe(catalog.length);
     for (const p of catalog) {
       expect(CatalogProductSchema.safeParse(p).success).toBe(true);
-      expect(p.source.provider).toBe('usda');
-      expect(p.id).toBe('usda-' + p.source.id);
+      expect(['usda', 'off']).toContain(p.source.provider);
+      expect(p.id).toBe((p.source.provider === 'usda' ? 'usda-' : 'off-') + p.source.id);
       expect(p.source.description.length).toBeGreaterThan(2);
-      expect(['SR Legacy 2018-04', 'FNDDS 2021–2023 (2024-10)']).toContain(p.source.release);
+      expect([
+        'SR Legacy 2018-04',
+        'FNDDS 2021–2023 (2024-10)',
+        'Open Food Facts · российский рынок',
+      ]).toContain(p.source.release);
     }
   });
   it('не подменяет сырую крупу готовой: разные записи, массы и калорийность', () => {
@@ -108,4 +112,26 @@ it('нормализует синонимы и хранит результаты
   expect(searchCatalog('rice cooked').some((p) => p.id === rice.id)).toBe(true);
   for (let i = 0; i < 40; i++) searchCatalog(String(i));
   expect(searchCatalog('гречка').some((p) => p.source.id === '170685')).toBe(true);
+});
+
+it('содержит продукты российского рынка с чистыми названиями и исходными КБЖУ', () => {
+  const russian = catalog.filter((p) => p.source.provider === 'off');
+  expect(russian).toHaveLength(manifest.count);
+  expect(russian.every((p) => !/&(?:quot|amp|lt|gt);/.test(p.name))).toBe(true);
+  for (const query of [
+    'творог',
+    'сметана',
+    'гречка',
+    'пельмени',
+    'борщ',
+    'сырники',
+    'Простоквашино',
+  ])
+    expect(searchCatalog(query).some((p) => p.source.provider === 'off')).toBe(true);
+  const product = catalog.find((p) => p.id === 'off-4600605027721')!;
+  expect(product.name).toContain('Простоквашино');
+  expect(product.per100.kcal).toBe(121);
+  expect(catalogSourceUrl(product.source)).toBe(
+    'https://world.openfoodfacts.org/product/4600605027721',
+  );
 });

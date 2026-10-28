@@ -300,7 +300,7 @@ export function App() {
           </span>
           <span className="local-badge">На телефоне</span>
         </header>
-        <main id="main-content" tabIndex={-1} aria-labelledby="page-title">
+        <main id="main-content" data-tab={tab} tabIndex={-1} aria-labelledby="page-title">
           <div className="page-title">
             <p className="eyebrow">{profile.name}, ВАШ СПОКОЙНЫЙ РИТМ</p>
             <h1 id="page-title" tabIndex={-1}>
@@ -496,15 +496,17 @@ export function App() {
           )}
         </main>
         {tab === 'diary' && (
-          <button
-            ref={addButton}
-            className="fab"
-            aria-label="Добавить еду"
-            onClick={() => setOpen(true)}
-          >
-            <Icon name="plus" size={25} />
-            <span>Добавить еду</span>
-          </button>
+          <div className="diary-add-anchor">
+            <button
+              ref={addButton}
+              className="fab"
+              aria-label="Добавить еду"
+              onClick={() => setOpen(true)}
+            >
+              <Icon name="plus" size={25} />
+              <span>Добавить еду</span>
+            </button>
+          </div>
         )}
         <nav className="bottom-nav" aria-label="Основная навигация">
           {tabs.map((item) => (
