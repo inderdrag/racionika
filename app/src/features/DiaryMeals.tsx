@@ -1,17 +1,19 @@
 import { useDialogFocus } from '../shared/ui/useDialogFocus';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { liveQuery } from 'dexie';
-import { db, type FavoriteDish, type FoodEntry, type MealType } from '../core/db';
+import { db, type FoodEntry, type MealType } from '../core/db';
 import {
   copyDish,
   prepareDishForReuse,
-  dishKey,
-  localTime,
   mealTypes,
   recentDishes,
   validateDetails,
 } from '../core/diary';
 import { entryTotals } from '../core/nutrition/analysis';
+import { useFavorites } from '../core/favorites';
+import { FavoriteHeart } from '../shared/ui/FavoriteHeart';
+import { MealComposer } from './add-food/MealComposer';
+import { AddFoodDialog } from './add-food/AddFoodDialog';
 import { Icon } from '../shared/ui/Icon';
 interface Props {
   entries: FoodEntry[];
@@ -19,9 +21,10 @@ interface Props {
   expanded: boolean;
   onEdit: (entry: FoodEntry) => void;
 }
-type Editor = { entry: FoodEntry; mode: 'details' | 'copy' | 'reuse' };
+type Editor = { entry: FoodEntry; mode: 'details' | 'copy' };
 export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
-  const [favorites, setFavorites] = useState<FavoriteDish[]>([]);
+  const { items: favorites, error: favoriteError } = useFavorites();
+  const [composer, setComposer] = useState<FoodEntry>();
   const [recent, setRecent] = useState<FoodEntry[]>([]);
   const [library, setLibrary] = useState<'favorites' | 'recent'>('favorites');
   const [editor, setEditor] = useState<Editor>();
@@ -37,13 +40,11 @@ export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
   }
   useEffect(() => {
     const sub = liveQuery(async () => ({
-      favorites: await db.favoriteDishes.orderBy('createdAt').reverse().toArray(),
       recent: recentDishes(
         await db.foodEntries.orderBy('createdAt').reverse().limit(200).toArray(),
       ),
     })).subscribe({
       next: (value) => {
-        setFavorites(value.favorites);
         setRecent(value.recent);
       },
       error: () => setError('Не удалось открыть избранное и недавние блюда.'),
@@ -68,57 +69,14 @@ export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
       else libraryButton.current?.focus();
     });
   }
-  async function toggleFavorite(entry: FoodEntry) {
-    await safe(async () => {
-      await db.transaction('rw', db.favoriteDishes, async () => {
-        const existing = (await db.favoriteDishes.toArray()).filter(
-          (item) => dishKey(item.entry) === dishKey(entry),
-        );
-        if (existing.length) {
-          await db.favoriteDishes.bulkDelete(existing.map((item) => item.id));
-        } else {
-          if ((await db.favoriteDishes.count()) >= 10000)
-            throw new Error('В избранном уже 10 000 блюд. Удалите ненужные.');
-          await db.favoriteDishes.add({
-            id: crypto.randomUUID(),
-            entry: structuredClone(entry),
-            createdAt: new Date().toISOString(),
-          });
-        }
-      });
-    });
-  }
-  const favoriteKeys = new Set(favorites.map((item) => dishKey(item.entry)));
   function row(entry: FoodEntry) {
-    const favorite = favoriteKeys.has(dishKey(entry));
     return (
       <li key={entry.id} className="diary-entry">
         <div className="diary-entry-main">
           <button className="meal-edit" onClick={() => onEdit(entry)}>
-            <span className="meal-avatar">
-              <Icon name="leaf" />
-            </span>
-            <span>
-              <strong>{entry.name}</strong>
-              <small>
-                {entry.eatenTime ? `${entry.eatenTime} · ` : ''}
-                {Math.round(entry.grams)} г ·{' '}
-                {entry.source === 'demo'
-                  ? 'ДЕМО'
-                  : entry.catalogSource
-                    ? entry.catalogSource.provider === 'usda'
-                      ? 'USDA'
-                      : 'Open Food Facts'
-                    : entry.analysis
-                      ? 'оценка ИИ'
-                      : 'ручной ввод'}
-              </small>
-            </span>
-            <b>
-              {Math.round(entryTotals(entry).kcal)}
-              <small>ккал</small>
-            </b>
+            <strong>{entry.name}</strong>
           </button>
+          <FavoriteHeart entry={entry} favorites={favorites} disabled={busy} />
           <button
             className="delete"
             disabled={busy}
@@ -132,9 +90,28 @@ export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
             ×
           </button>
         </div>
+        <div className="diary-entry-info">
+          <small>
+            {entry.eatenTime ? `${entry.eatenTime} · ` : ''}
+            {Math.round(entry.grams)} г ·{' '}
+            {entry.source === 'demo'
+              ? 'ДЕМО'
+              : entry.catalogSource
+                ? entry.catalogSource.provider === 'usda'
+                  ? 'USDA'
+                  : 'Open Food Facts'
+                : entry.analysis
+                  ? 'оценка ИИ'
+                  : 'ручной ввод'}
+          </small>
+          <b>
+            {Math.round(entryTotals(entry).kcal)}
+            <small>ккал</small>
+          </b>
+        </div>
         {entry.note && <p className="diary-note">{entry.note}</p>}
         <details className="entry-actions">
-          <summary>Действия{favorite ? ' · в избранном' : ''}</summary>
+          <summary>Действия</summary>
           <div>
             <button
               className="text-button"
@@ -142,13 +119,6 @@ export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
               onClick={() => openEditor({ entry, mode: 'details' })}
             >
               Время и заметка
-            </button>
-            <button
-              className="text-button"
-              disabled={busy}
-              onClick={() => void toggleFavorite(entry)}
-            >
-              {favorite ? 'Убрать из избранного' : 'В избранное'}
             </button>
             <button
               className="text-button"
@@ -248,29 +218,40 @@ export function DiaryMeals({ entries, day, expanded, onEdit }: Props) {
                     className="secondary"
                     disabled={busy}
                     aria-label={`Добавить ${entry.name} из списка`}
-                    onClick={() => openEditor({ entry, mode: 'reuse' })}
+                    onClick={() => {
+                      editorOpener.current = document.activeElement as HTMLElement;
+                      setComposer(prepareDishForReuse(entry));
+                    }}
                   >
-                    Добавить
+                    +
                   </button>
-                  {library === 'favorites' && (
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      aria-label={`Убрать ${entry.name} из избранного`}
-                      onClick={() => void toggleFavorite(entry)}
-                    >
-                      Убрать
-                    </button>
-                  )}
+                  <FavoriteHeart entry={entry} favorites={favorites} disabled={busy} />
                 </li>
               ))}
             </ul>
           )}
         </section>
       )}
-      {error && (
+      {composer && (
+        <MealComposer
+          entry={composer}
+          day={day}
+          onClose={() => {
+            setComposer(undefined);
+            closeEditor();
+          }}
+          onSaved={() => {
+            setComposer(undefined);
+            closeEditor();
+          }}
+          renderPicker={(pick, close) => (
+            <AddFoodDialog day={day} onPick={pick} onClose={close} onSaved={close} />
+          )}
+        />
+      )}
+      {(error || favoriteError) && (
         <p className="error" role="alert">
-          {error}
+          {error || favoriteError}
         </p>
       )}
       {editor && (
@@ -350,11 +331,7 @@ function EntryDetails({
       <form onSubmit={(event) => void save(event)}>
         <div className="section-head">
           <h2 id="entry-details-title">
-            {mode === 'details'
-              ? 'Время и заметка'
-              : mode === 'copy'
-                ? 'Копировать блюдо'
-                : 'Добавить готовое блюдо'}
+            {mode === 'details' ? 'Время и заметка' : 'Копировать блюдо'}
           </h2>
           <button
             type="button"
@@ -398,11 +375,7 @@ function EntryDetails({
           </label>
           <label>
             Время еды
-            <input
-              name="time"
-              type="time"
-              defaultValue={mode === 'reuse' ? localTime() : (entry.eatenTime ?? '')}
-            />
+            <input name="time" type="time" defaultValue={entry.eatenTime ?? ''} />
           </label>
           <label>
             Заметка
@@ -411,7 +384,7 @@ function EntryDetails({
               name="note"
               maxLength={1000}
               rows={3}
-              defaultValue={mode === 'reuse' ? '' : (entry.note ?? '')}
+              defaultValue={entry.note ?? ''}
               placeholder="Например, домашний обед"
             />
           </label>

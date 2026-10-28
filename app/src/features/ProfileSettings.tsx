@@ -106,7 +106,7 @@ export function ProfileSettings({
       <SettingsExtras />
       <section className="card profile-card">
         <h2>Данные на телефоне</h2>
-        <p className="subtle">Резервная копия дневника. Данные хранятся на телефоне.</p>
+        <p className="subtle">Резервная копия дневника.</p>
         <button
           className="secondary"
           disabled={busy}
@@ -161,8 +161,7 @@ export function ProfileSettings({
               {backup.favoriteDishes.length}
             </p>
             <p className="subtle">
-              Записи объединятся по ID, одинаковые ID обновятся. Профиль, согласие и напоминания не
-              заменяются автоматически.
+              Записи объединятся, совпадающие — обновятся. Профиль — только по выбору ниже.
             </p>
             <p className="subtle">
               {backup.schemaVersion === 5
@@ -198,8 +197,7 @@ export function ProfileSettings({
               </label>
             )}
             <p className="subtle">
-              Согласия, ключи и расписание уведомлений не переносятся. Копия содержит личные данные
-              — храните её в безопасном месте.
+              Разрешения и напоминания не переносятся. Храните копию в безопасном месте.
             </p>
             <button
               className="primary"
