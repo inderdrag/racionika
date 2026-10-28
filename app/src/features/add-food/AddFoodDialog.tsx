@@ -28,7 +28,7 @@ import { ProductPicker } from './ProductPicker';
 interface Props {
   day: string;
   editing?: FoodEntry;
-  onPick?: (entry: FoodEntry) => void;
+  onPick?: (entry: FoodEntry, keepOpen?: boolean) => void;
   onClose: () => void;
   onSaved: () => void;
 }

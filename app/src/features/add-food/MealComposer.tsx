@@ -12,6 +12,7 @@ import { useFavorites } from '../../core/favorites';
 import { FavoriteHeart } from '../../shared/ui/FavoriteHeart';
 import { useDialogFocus } from '../../shared/ui/useDialogFocus';
 import { reviewMealComposition } from '@racionika/shared';
+import { PortionInput } from './PortionInput';
 import { entryTotals } from '../../core/nutrition/analysis';
 interface Props {
   entry: FoodEntry;
@@ -20,7 +21,10 @@ interface Props {
   initialCategory?: MealType;
   onClose: () => void;
   onSaved: () => void;
-  renderPicker: (pick: (entry: FoodEntry) => void, close: () => void) => ReactNode;
+  renderPicker: (
+    pick: (entry: FoodEntry, keepOpen?: boolean) => void,
+    close: () => void,
+  ) => ReactNode;
 }
 export function MealComposer({
   entry,
@@ -129,27 +133,28 @@ export function MealComposer({
             />
           )}
         </div>
-        <label className="field">
-          Масса порции, г
-          <input
-            type="number"
-            min="1"
-            max="5000"
-            step="0.1"
-            inputMode="decimal"
-            value={mass}
-            onChange={(e) => {
-              const value = e.target.value;
-              setMass(value);
-              setError('');
-              try {
-                setItems(resizeIngredients(items, Number(value)));
-              } catch {
-                setError('Масса: от 1 до 5000 г.');
-              }
-            }}
-          />
-        </label>
+        <PortionInput
+          key={
+            items.length === 1 && items[0].name === seed.name
+              ? (seed.catalogSource?.id ?? 'single')
+              : 'meal'
+          }
+          source={
+            items.length === 1 && items[0].name === seed.name ? seed.catalogSource : undefined
+          }
+          grams={mass}
+          label="Масса порции, г"
+          disabled={busy}
+          onChange={(value) => {
+            setMass(value);
+            setError('');
+            try {
+              setItems(resizeIngredients(items, Number(value)));
+            } catch {
+              setError('Масса: от 1 до 5000 г.');
+            }
+          }}
+        />
         <label className="field">
           Куда добавить
           <select
@@ -272,7 +277,7 @@ export function MealComposer({
         </button>
       </dialog>
       {picking &&
-        renderPicker((picked) => {
+        renderPicker((picked, keepOpen) => {
           try {
             const next = appendIngredients(items, ingredientsOf(picked));
             setItems(next);
@@ -287,9 +292,10 @@ export function MealComposer({
                     : current.source,
             }));
             setError('');
-            closePicker();
+            if (!keepOpen) closePicker();
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Не удалось добавить продукт.');
+            if (keepOpen) throw e;
             closePicker();
           }
         }, closePicker)}

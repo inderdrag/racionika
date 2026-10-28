@@ -1,4 +1,7 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { liveQuery } from 'dexie';
+import { PortionInput } from './PortionInput';
+import { productUsage, rankByUsage, shortForm, sourceKey } from '../../core/catalog/usage';
 import { searchCatalog } from '../../core/catalog';
 import type { CatalogProduct } from '../../core/catalog/types';
 import { useFavorites } from '../../core/favorites';
@@ -20,7 +23,7 @@ export function ProductPicker({
   busy: boolean;
   onCamera: () => void;
   onSaved: () => void;
-  onPick?: (entry: FoodEntry) => void;
+  onPick?: (entry: FoodEntry, keepOpen?: boolean) => void;
   onCompose?: (entry: FoodEntry) => void;
 }) {
   const favorites = useFavorites();
@@ -46,7 +49,49 @@ export function ProductPicker({
   const [mealType, setMealType] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const results = query.trim() ? searchCatalog(query) : [];
+  const [history, setHistory] = useState<FoodEntry[]>([]);
+  const [added, setAdded] = useState(0);
+  useEffect(() => {
+    const subscription = liveQuery(() =>
+      db.foodEntries.orderBy('createdAt').reverse().limit(1000).toArray(),
+    ).subscribe({
+      next: setHistory,
+      error: () => setError('История порций недоступна. Поиск работает.'),
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+  const usage = productUsage(history);
+  const results = query.trim() ? rankByUsage(searchCatalog(query), usage) : [];
+  function backToSearch() {
+    setSelected(null);
+    setError('');
+    requestAnimationFrame(() => {
+      search.current?.focus();
+      search.current?.select();
+    });
+  }
+  async function saveSelected(keepOpen = false) {
+    const category = mealTypes.find((item) => item.value === mealType)?.value;
+    if (!selected || !total || (!onPick && !category) || saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      const entry = productEntry(selected, amount);
+      if (onPick) onPick(entry, keepOpen);
+      else {
+        await db.foodEntries.put(entry);
+        if (!keepOpen) onSaved();
+      }
+      if (keepOpen) {
+        setAdded((n) => n + 1);
+        backToSearch();
+      }
+    } catch {
+      setError('Не удалось сохранить продукт.');
+    } finally {
+      setSaving(false);
+    }
+  }
   const amount = Number(grams);
   const total =
     selected && Number.isFinite(amount) && amount >= 1 && amount <= 5000
@@ -54,23 +99,7 @@ export function ProductPicker({
       : null;
   async function save(event: FormEvent) {
     event.preventDefault();
-    const category = mealTypes.find((item) => item.value === mealType)?.value;
-    if (!selected || !total || (!onPick && !category) || saving) return;
-    setSaving(true);
-    setError('');
-    try {
-      const entry = productEntry(selected, amount);
-      if (onPick) {
-        onPick(entry);
-        return;
-      }
-      await db.foodEntries.put(entry);
-      onSaved();
-    } catch {
-      setError('Не удалось сохранить продукт.');
-    } finally {
-      setSaving(false);
-    }
+    await saveSelected();
   }
   if (selected)
     return (
@@ -104,19 +133,14 @@ export function ProductPicker({
         <p className="subtle">
           {selected.preparation} · {selected.per100.kcal.toLocaleString('ru-RU')} ккал на 100 г
         </p>
-        <label>
-          Масса, г
-          <input
-            type="number"
-            inputMode="decimal"
-            min="1"
-            max="5000"
-            step="0.1"
-            required
-            value={grams}
-            onChange={(e) => setGrams(e.target.value)}
-          />
-        </label>
+        <PortionInput
+          key={selected.id}
+          source={selected.source}
+          grams={grams}
+          onChange={setGrams}
+          lastGrams={usage.get(sourceKey(selected.source))?.grams}
+          disabled={saving}
+        />
         <div className="catalog-total">
           <strong>
             {Math.round(total?.kcal ?? 0).toLocaleString('ru-RU')} <small>ккал</small>
@@ -143,6 +167,14 @@ export function ProductPicker({
             {error}
           </p>
         )}
+        <button
+          type="button"
+          className="secondary"
+          disabled={saving || !total || (!onPick && !mealType)}
+          onClick={() => void saveSelected(true)}
+        >
+          Добавить и продолжить
+        </button>
         <button className="primary" disabled={saving || !total || (!onPick && !mealType)}>
           {onPick ? 'Добавить продукт' : 'Добавить в дневник'}
         </button>
@@ -200,6 +232,16 @@ export function ProductPicker({
           </svg>
         </button>
       </form>
+      {added > 0 && (
+        <p className="subtle" role="status">
+          Добавлено: {added}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
       {query.trim() && (
         <>
           <ul className="catalog-results" aria-label="Продукты на телефоне">
@@ -216,7 +258,10 @@ export function ProductPicker({
                   }}
                 >
                   <strong>{product.name}</strong>
-                  <span className="subtle">{Math.round(product.per100.kcal)} ккал на 100 г</span>
+                  <span className="subtle">
+                    {shortForm(product)} · {Math.round(product.per100.kcal)} ккал на 100 г
+                    {usage.has(sourceKey(product.source)) ? ' · недавно' : ''}
+                  </span>
                 </button>
                 <FavoriteHeart
                   entry={productEntry(product)}

@@ -21,6 +21,14 @@ public class ReminderRulesTest {
   }
 
   @Test
+  public void explicitSnoozeHonoursQuietHoursAndNextMeal() throws Exception {
+    long now = at("2026-10-26 13:00");
+    assertEquals(at("2026-10-26 13:30"), ReminderRules.snooze(now, at("2026-10-26 18:00"), true));
+    assertEquals(-1, ReminderRules.snooze(now, at("2026-10-26 13:30"), true));
+    assertEquals(-1, ReminderRules.snooze(now, Long.MAX_VALUE, false));
+  }
+
+  @Test
   public void threeStagesOnly() throws Exception {
     long first = at("2026-10-26 08:00"), next = at("2026-10-26 13:00");
     long second = ReminderRules.followup(first, 0, next, true);

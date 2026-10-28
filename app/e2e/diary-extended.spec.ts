@@ -72,12 +72,16 @@ test('копирование на дату создаёт отдельную з�
   await page.getByLabel('Дата добавления').fill('2026-11-12');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toHaveCount(1);
+  if (await page.locator('.calendar-toggle').isVisible())
+    await page.locator('.calendar-toggle').click();
   await page.getByLabel('Дата дневника').fill('2026-11-12');
   await expect(page.locator('.meals li')).toHaveCount(1);
   await expect(page.locator('.meals li')).toContainText('Домашний завтрак');
   await page.locator('.meal-edit').click();
   await page.getByLabel('Название', { exact: true }).fill('Копия овсянки');
   await page.getByRole('button', { name: 'Сохранить запись', exact: true }).click();
+  if (await page.locator('.calendar-toggle').isVisible())
+    await page.locator('.calendar-toggle').click();
   await page.getByLabel('Дата дневника').fill(new Date().toLocaleDateString('sv-SE'));
   await expect(page.locator('.meals li')).toContainText('Овсянка');
   await expect(page.locator('.meals li')).not.toContainText('Копия овсянки');
@@ -216,6 +220,8 @@ test('миграция v3 → v4 сохраняет все старые табл
   });
   await page.unroute('**/*');
   await page.reload();
+  if (await page.locator('.calendar-toggle').isVisible())
+    await page.locator('.calendar-toggle').click();
   await page.getByLabel('Дата дневника').fill('2026-10-24');
   await page.getByRole('button', { name: 'Дневник', exact: true }).click();
   await expect(page.locator('.meals li')).toContainText('Старая еда');
@@ -337,6 +343,8 @@ test('блюдо ИИ сохраняет детали при правке сос
   await page.getByRole('button', { name: 'Копировать на дату' }).click();
   await page.getByLabel('Дата добавления').fill('2026-11-13');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
+  if (await page.locator('.calendar-toggle').isVisible())
+    await page.locator('.calendar-toggle').click();
   await page.getByLabel('Дата дневника').fill('2026-11-13');
   await expect(page.locator('.calorie-orbit strong')).toHaveText('729');
   await expect(page.locator('.diary-note')).toHaveText('Домашний завтрак');
