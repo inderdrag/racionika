@@ -22,6 +22,7 @@ export function createReleaseMetadata({
   const match = /^# ([^\r\n]+)$/u.exec(first);
   if (
     !match ||
+    !match[1].trim() ||
     match[1].trim().length > 120 ||
     [...match[1]].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
   )

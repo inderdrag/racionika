@@ -42,6 +42,10 @@ test('rejects empty descriptions, unsafe version/file names and multiline headli
     /changes/,
   );
   assert.throws(
+    () => createReleaseMetadata({ version: '0.3.0', notes: '#   \n\n- Изменения' }),
+    /headline/,
+  );
+  assert.throws(
     () => createReleaseMetadata({ version: '0.3.0', notes: 'Описание без заголовка' }),
     /headline/,
   );
