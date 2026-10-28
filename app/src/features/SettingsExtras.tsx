@@ -4,6 +4,7 @@ import { exportCsv, type ReportType } from '../core/csv';
 import { getPlatform } from '../core/platform';
 import { savePreferences, usePreferences } from '../core/preferences';
 import notices from '../data/licenses.json';
+import { exportOpenFoodFactsCatalog } from '../core/catalog/export';
 export function SettingsExtras() {
   const preferences = usePreferences();
   const [notice, setNotice] = useState('');
@@ -130,9 +131,35 @@ export function SettingsExtras() {
         </p>
         <p>
           <a href="https://world.openfoodfacts.org/terms-of-use" target="_blank" rel="noreferrer">
-            Условия Open Food Facts ↗
+            Open Food Facts ↗
           </a>
         </p>
+        <p>
+          <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">
+            Лицензия базы ODbL 1.0 ↗
+          </a>
+        </p>
+        <button
+          type="button"
+          className="secondary"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setNotice('');
+            void getPlatform()
+              .then((platform) =>
+                platform.share.text(
+                  'racionika-openfoodfacts-ru.json',
+                  exportOpenFoodFactsCatalog(),
+                  'application/json',
+                ),
+              )
+              .catch(() => setNotice('Не удалось экспортировать базу.'))
+              .finally(() => setBusy(false));
+          }}
+        >
+          Экспорт открытой базы
+        </button>
         <p className="subtle">
           Шрифт Manrope — SIL OFL 1.1. Ниже — тексты лицензий JavaScript и Capacitor-пакетов,
           включая их runtime-зависимости. Нативные Android-библиотеки описаны в документации
