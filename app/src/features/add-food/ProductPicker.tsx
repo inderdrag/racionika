@@ -1,6 +1,9 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { searchCatalog } from '../../core/catalog';
 import type { CatalogProduct } from '../../core/catalog/types';
+import { useFavorites } from '../../core/favorites';
+import { FavoriteHeart } from '../../shared/ui/FavoriteHeart';
+import type { FoodEntry } from '../../core/db';
 import { db } from '../../core/db';
 import { mealMetadata, mealTypes } from '../../core/diary';
 import { scaleNutrients } from '../../core/nutrition/meal';
@@ -10,12 +13,31 @@ export function ProductPicker({
   busy,
   onCamera,
   onSaved,
+  onPick,
+  onCompose,
 }: {
   day: string;
   busy: boolean;
   onCamera: () => void;
   onSaved: () => void;
+  onPick?: (entry: FoodEntry) => void;
+  onCompose?: (entry: FoodEntry) => void;
 }) {
+  const favorites = useFavorites();
+  function productEntry(product: CatalogProduct, amount = 100): FoodEntry {
+    return {
+      ...mealMetadata(),
+      id: crypto.randomUUID(),
+      day,
+      name: product.name,
+      grams: amount,
+      per100: product.per100,
+      source: 'label',
+      catalogSource: product.source,
+      mealType: mealTypes.find((m) => m.value === mealType)?.value,
+      createdAt: new Date().toISOString(),
+    };
+  }
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(20);
@@ -33,22 +55,16 @@ export function ProductPicker({
   async function save(event: FormEvent) {
     event.preventDefault();
     const category = mealTypes.find((item) => item.value === mealType)?.value;
-    if (!selected || !total || !category || saving) return;
+    if (!selected || !total || (!onPick && !category) || saving) return;
     setSaving(true);
     setError('');
     try {
-      await db.foodEntries.put({
-        ...mealMetadata(),
-        id: crypto.randomUUID(),
-        day,
-        name: selected.name,
-        grams: amount,
-        per100: selected.per100,
-        source: 'label',
-        catalogSource: selected.source,
-        mealType: category,
-        createdAt: new Date().toISOString(),
-      });
+      const entry = productEntry(selected, amount);
+      if (onPick) {
+        onPick(entry);
+        return;
+      }
+      await db.foodEntries.put(entry);
       onSaved();
     } catch {
       setError('Не удалось сохранить продукт.');
@@ -59,23 +75,32 @@ export function ProductPicker({
   if (selected)
     return (
       <form onSubmit={(e) => void save(e)} className="catalog-selection">
-        <label className="field">
-          Куда добавить
-          <select
-            aria-label="Куда добавить"
-            value={mealType}
-            required
-            onChange={(e) => setMealType(e.target.value)}
-          >
-            <option value="">Выберите приём пищи</option>
-            {mealTypes.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <h3>{selected.name}</h3>
+        {!onPick && (
+          <label className="field">
+            Куда добавить
+            <select
+              aria-label="Куда добавить"
+              value={mealType}
+              required
+              onChange={(e) => setMealType(e.target.value)}
+            >
+              <option value="">Выберите приём пищи</option>
+              {mealTypes.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <div className="favorite-title">
+          <h3>{selected.name}</h3>
+          <FavoriteHeart
+            entry={productEntry(selected, total ? amount : 100)}
+            favorites={favorites.items}
+            disabled={saving || !total}
+          />
+        </div>
         <p className="subtle">
           {selected.preparation} · {selected.per100.kcal.toLocaleString('ru-RU')} ккал на 100 г
         </p>
@@ -102,14 +127,24 @@ export function ProductPicker({
             {(total?.carbs ?? 0).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} г
           </p>
         </div>
+        {onCompose && (
+          <button
+            type="button"
+            className="secondary"
+            disabled={saving || !total}
+            onClick={() => onCompose(productEntry(selected, amount))}
+          >
+            ＋ Добавить продукт
+          </button>
+        )}
         <CatalogSource source={selected.source} />
         {error && (
           <p className="error" role="alert">
             {error}
           </p>
         )}
-        <button className="primary" disabled={saving || !total || !mealType}>
-          Добавить в дневник
+        <button className="primary" disabled={saving || !total || (!onPick && !mealType)}>
+          {onPick ? 'Добавить продукт' : 'Добавить в дневник'}
         </button>
         <button
           type="button"
@@ -169,7 +204,7 @@ export function ProductPicker({
         <>
           <ul className="catalog-results" aria-label="Продукты на телефоне">
             {results.slice(0, limit).map((product) => (
-              <li key={product.id}>
+              <li key={product.id} className="catalog-result-row">
                 <button
                   type="button"
                   className="catalog-pick"
@@ -182,6 +217,11 @@ export function ProductPicker({
                   <strong>{product.name}</strong>
                   <span className="subtle">{Math.round(product.per100.kcal)} ккал на 100 г</span>
                 </button>
+                <FavoriteHeart
+                  entry={productEntry(product)}
+                  favorites={favorites.items}
+                  disabled={busy}
+                />
               </li>
             ))}
           </ul>

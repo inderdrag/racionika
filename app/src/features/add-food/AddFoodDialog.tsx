@@ -2,7 +2,7 @@ import { useDialogFocus } from '../../shared/ui/useDialogFocus';
 import { loadPreferences } from '../../core/preferences';
 import { mealMetadata, mealTypes } from '../../core/diary';
 import { hasAiConsent } from '../../core/profile';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   AnalysisResponseSchema,
   RECOGNITION_REVISION,
@@ -20,14 +20,22 @@ import {
   roundedComponentCalories,
 } from '../../core/nutrition/analysis';
 import { getPlatform } from '../../core/platform';
+import { useFavorites } from '../../core/favorites';
+import { ingredientEntry } from '../../core/meal-composer';
+import { FavoriteHeart } from '../../shared/ui/FavoriteHeart';
+import { MealComposer } from './MealComposer';
 import { ProductPicker } from './ProductPicker';
 interface Props {
   day: string;
   editing?: FoodEntry;
+  onPick?: (entry: FoodEntry) => void;
   onClose: () => void;
   onSaved: () => void;
 }
-export function AddFoodDialog({ day, editing, onClose, onSaved }: Props) {
+export function AddFoodDialog({ day, editing, onClose, onSaved, onPick }: Props) {
+  const titleId = useId();
+  const favorites = useFavorites();
+  const [composing, setComposing] = useState<FoodEntry>();
   const dialog = useRef<HTMLDialogElement>(null);
   useDialogFocus(dialog);
   const controller = useRef<AbortController | null>(null);
@@ -141,38 +149,56 @@ export function AddFoodDialog({ day, editing, onClose, onSaved }: Props) {
       if (mounted.current) setBusy(false);
     }
   }
+  function draftEntry(): FoodEntry {
+    if (!result?.ingredients.length) throw new Error('Добавьте продукт.');
+    const analysis = withoutAutomaticAdditions(result);
+    const total = aggregatePer100(analysis, level, baseGrams);
+    if (total.grams < 1 || total.grams > 5000) throw new Error('Масса: от 1 до 5000 г.');
+    return {
+      ...mealMetadata(editing),
+      mealType: mealType || undefined,
+      id: editing?.id ?? crypto.randomUUID(),
+      day,
+      name: analysis.dish_name,
+      grams: total.grams,
+      per100: total.per100,
+      analysis,
+      baseGrams,
+      additionsLevel: level,
+      source: demo ? 'demo' : 'ai',
+      createdAt: editing?.createdAt ?? new Date().toISOString(),
+    };
+  }
+  let favoriteDraft: FoodEntry | undefined;
+  try {
+    favoriteDraft = draftEntry();
+  } catch {
+    /* Empty result. */
+  }
   async function save() {
-    if (!result?.ingredients.length) return;
-    if (!mealType) {
-      setError('Выберите, куда добавить блюдо: завтрак, обед, ужин или перекус.');
+    if (inFlight.current) return;
+    if (!onPick && !mealType) {
+      setError('Выберите, куда добавить блюдо.');
       return;
     }
-    const issues = reviewMealComposition(result);
+    const issues = result ? reviewMealComposition(result) : [];
     if (issues.length) {
       setError(issues[0].message);
       return;
     }
+    inFlight.current = true;
     try {
-      const analysis = withoutAutomaticAdditions(result);
-      const total = aggregatePer100(analysis, level, baseGrams);
-      if (total.grams <= 0) throw new Error('Укажите массу хотя бы одного ингредиента.');
-      await db.foodEntries.put({
-        ...mealMetadata(editing),
-        mealType,
-        id: editing?.id ?? crypto.randomUUID(),
-        day,
-        name: analysis.dish_name,
-        grams: total.grams,
-        per100: total.per100,
-        analysis,
-        baseGrams,
-        additionsLevel: level,
-        source: demo ? 'demo' : 'ai',
-        createdAt: editing?.createdAt ?? new Date().toISOString(),
-      });
+      const entry = draftEntry();
+      if (onPick) {
+        onPick(entry);
+        return;
+      }
+      await db.foodEntries.put(entry);
       onSaved();
     } catch (error) {
       fail(error);
+    } finally {
+      inFlight.current = false;
     }
   }
   const totals = result ? analysisTotals(result, level, baseGrams) : undefined;
@@ -181,232 +207,287 @@ export function AddFoodDialog({ day, editing, onClose, onSaved }: Props) {
   const displayGrams = (value: number) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(value);
   return (
-    <dialog
-      ref={dialog}
-      className="analysis-dialog product-dialog"
-      aria-labelledby="analysis-title"
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-    >
-      <div className="section-head">
-        <h2 id="analysis-title">{result ? 'Разбор блюда' : 'Добавить продукт'}</h2>
-        <button className="close" aria-label="Закрыть" onClick={onClose}>
-          ×
-        </button>
-      </div>
-      {!result && (
-        <ProductPicker
-          day={day}
-          busy={busy}
-          onCamera={() => void analyze(true)}
-          onSaved={onSaved}
-        />
-      )}
-      {result && demo && (
-        <p className="ai-mode demo-mode" role="status">
-          ДЕМО: фиксированный пример, без распознавания
-        </p>
-      )}
-      {result && (
-        <>
-          {demo && <p className="subtle">ДЕМО: эта запись не описывает вашу реальную еду.</p>}
-          {!result.is_food ? (
-            <>
-              <p className="error" role="alert">
-                На фото не распознана еда. Сделайте другой снимок.
-              </p>
-              <button className="secondary" onClick={() => setResult(undefined)}>
-                Попробовать снова
-              </button>
-            </>
-          ) : (
-            <>
-              <label className="field result-category">
-                Куда добавить
-                <select
-                  aria-label="Приём пищи для блюда"
-                  value={mealType}
-                  onChange={(event) => {
-                    setMealType(event.target.value as MealType | '');
-                    setError('');
-                  }}
-                >
-                  <option value="">Выберите категорию</option>
-                  {mealTypes.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="meal-name">{result.dish_name}</div>
-              <div className="ingredient-list" aria-label="Состав блюда">
-                {totals?.components.map((item, index) => (
-                  <section className="ingredient" key={index}>
-                    <div className="ingredient-head">
-                      <h3 className="ingredient-title">{item.name}</h3>
-                      {item.ingredientIndex !== undefined && (
-                        <button
-                          className="remove-ingredient"
-                          aria-label={`Удалить продукт ${index + 1}`}
-                          disabled={busy}
-                          onClick={() => {
-                            const ingredientIndex = item.ingredientIndex;
-                            setResult({
-                              ...result,
-                              ingredients: result.ingredients.filter(
-                                (_, i) => i !== ingredientIndex,
-                              ),
-                            });
-                            setError('');
-                          }}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                    <div className="ingredient-mass">
-                      {item.grams !== null ? (
-                        <>
-                          <button
-                            aria-label={`Уменьшить массу ${index + 1}`}
-                            onClick={() => changeComponentGrams(index, (item.grams ?? 0) - 10)}
-                          >
-                            −
-                          </button>
-                          <label>
-                            Масса, г
-                            <input
-                              aria-label={`Масса ингредиента ${index + 1}`}
-                              inputMode="decimal"
-                              type="number"
-                              min={0}
-                              max={5000}
-                              step="0.1"
-                              value={Math.round(item.grams * 10) / 10}
-                              onChange={(e) => changeComponentGrams(index, Number(e.target.value))}
-                            />
-                          </label>
-                          <button
-                            aria-label={`Увеличить массу ${index + 1}`}
-                            onClick={() => changeComponentGrams(index, (item.grams ?? 0) + 10)}
-                          >
-                            +
-                          </button>
-                        </>
-                      ) : (
-                        <span className="unknown-mass" aria-label="Масса соуса неизвестна">
-                          — г
-                        </span>
-                      )}
-                      <strong className="component-kcal">
-                        {componentCalories[index]} <small>ккал</small>
-                      </strong>
-                    </div>
-                  </section>
-                ))}
-              </div>
-              <div className="result-summary" aria-label="Итого блюдо" aria-live="polite">
-                <span>Итого</span>
-                <div className="meal-total-values">
-                  <strong className="result-kcal">
-                    {Math.round(totals?.nutrients.kcal ?? 0)} <small>ккал</small>
-                  </strong>
-                  <strong
-                    className="result-grams"
-                    aria-label={
-                      totals?.sauceUnknown ? 'Известная масса без массы соуса' : 'Общая масса блюда'
-                    }
-                  >
-                    {totals?.sauceUnknown ? '≥ ' : ''}
-                    {displayGrams(totals?.mealGrams ?? 0)} <small>г</small>
-                  </strong>
-                </div>
-              </div>
-              {reviewIssues.length > 0 && (
-                <p className="error" role="alert">
-                  {reviewIssues[0].message}
-                </p>
-              )}
-              <details
-                className="analysis-check"
-                onToggle={(event) => setReviewOpen(event.currentTarget.open)}
-              >
-                <summary>
-                  {result.warnings.some((w) => w.includes('Ккал отличаются'))
-                    ? 'Проверить КБЖУ и состав'
-                    : 'Уточнить состав'}
-                </summary>
-                {reviewOpen && (
-                  <div>
-                    {result.warnings.map((warning, i) => (
-                      <p key={`warning-${i}`}>{warning}</p>
-                    ))}
-                    {result.clarifying_questions.map((item, i) => (
-                      <p key={`question-${i}`}>{item.question}</p>
-                    ))}
-                    {!editing && (
-                      <>
-                        <label>
-                          Уточнение
-                          <input
-                            value={hint}
-                            maxLength={500}
-                            placeholder="Например: рис 150 г готового, соуса нет"
-                            onChange={(e) => setHint(e.target.value)}
-                            disabled={busy}
-                          />
-                        </label>
-                        <p>Новый запрос к ИИ. Массу по фото лучше сверить на весах.</p>
-                        <button
-                          className="secondary"
-                          disabled={busy || !hint.trim()}
-                          onClick={() => void analyze()}
-                        >
-                          Повторить разбор
-                        </button>
-                      </>
-                    )}
-                    {editing && !result.warnings.length && !result.clarifying_questions.length && (
-                      <p>Исправьте массу выше или удалите лишний продукт.</p>
-                    )}
-                  </div>
-                )}
-              </details>
-            </>
-          )}
-        </>
-      )}
-      {busy ? (
-        <div className="analysis-busy" role="status">
-          <span className="spinner" />
-          <p>{slow ? 'Распознавание ещё выполняется…' : 'Распознаём фото…'}</p>
-          <button className="secondary" onClick={() => controller.current?.abort()}>
-            Отменить запрос
+    <>
+      <dialog
+        ref={dialog}
+        className="analysis-dialog product-dialog"
+        aria-labelledby={titleId}
+        onCancel={(event) => {
+          event.preventDefault();
+          onClose();
+        }}
+      >
+        <div className="section-head">
+          <h2 id={titleId}>{result ? 'Разбор блюда' : 'Добавить продукт'}</h2>
+          <button className="close" aria-label="Закрыть" onClick={onClose}>
+            ×
           </button>
         </div>
-      ) : result?.is_food ? (
-        <button
-          className="primary save-analysis"
-          disabled={
-            reviewIssues.length > 0 ||
-            !result.ingredients.length ||
-            !result.dish_name.trim() ||
-            (totals?.mealGrams ?? 0) <= 0
-          }
-          onClick={() => void save()}
-        >
-          {demo ? 'Сохранить демозапись' : 'Сохранить блюдо'}
-        </button>
-      ) : null}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        {!result && (
+          <ProductPicker
+            day={day}
+            busy={busy}
+            onCamera={() => void analyze(true)}
+            onSaved={onSaved}
+            onPick={onPick}
+            onCompose={onPick ? undefined : setComposing}
+          />
+        )}
+        {result && demo && (
+          <p className="ai-mode demo-mode" role="status">
+            ДЕМО: фиксированный пример, без распознавания
+          </p>
+        )}
+        {result && (
+          <>
+            {demo && <p className="subtle">ДЕМО: эта запись не описывает вашу реальную еду.</p>}
+            {!result.is_food ? (
+              <>
+                <p className="error" role="alert">
+                  На фото не распознана еда. Сделайте другой снимок.
+                </p>
+                <button className="secondary" onClick={() => setResult(undefined)}>
+                  Попробовать снова
+                </button>
+              </>
+            ) : (
+              <>
+                {!onPick && (
+                  <label className="field result-category">
+                    Куда добавить
+                    <select
+                      aria-label="Приём пищи для блюда"
+                      value={mealType}
+                      onChange={(event) => {
+                        setMealType(event.target.value as MealType | '');
+                        setError('');
+                      }}
+                    >
+                      <option value="">Выберите категорию</option>
+                      {mealTypes.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <div className="favorite-title">
+                  <div className="meal-name">{result.dish_name}</div>
+                  {favoriteDraft && (
+                    <FavoriteHeart
+                      entry={favoriteDraft}
+                      favorites={favorites.items}
+                      disabled={busy}
+                    />
+                  )}
+                </div>
+                <div className="ingredient-list" aria-label="Состав блюда">
+                  {totals?.components.map((item, index) => (
+                    <section className="ingredient" key={index}>
+                      <div className="ingredient-head">
+                        <h3 className="ingredient-title">{item.name}</h3>
+                        {item.ingredientIndex !== undefined && (
+                          <FavoriteHeart
+                            entry={ingredientEntry(
+                              result.ingredients[item.ingredientIndex],
+                              demo ? 'demo' : 'ai',
+                            )}
+                            favorites={favorites.items}
+                            disabled={busy}
+                          />
+                        )}
+                        {item.ingredientIndex !== undefined && (
+                          <button
+                            className="remove-ingredient"
+                            aria-label={`Удалить продукт ${index + 1}`}
+                            disabled={busy}
+                            onClick={() => {
+                              const ingredientIndex = item.ingredientIndex;
+                              setResult({
+                                ...result,
+                                ingredients: result.ingredients.filter(
+                                  (_, i) => i !== ingredientIndex,
+                                ),
+                              });
+                              setError('');
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      <div className="ingredient-mass">
+                        {item.grams !== null ? (
+                          <>
+                            <button
+                              aria-label={`Уменьшить массу ${index + 1}`}
+                              onClick={() => changeComponentGrams(index, (item.grams ?? 0) - 10)}
+                            >
+                              −
+                            </button>
+                            <label>
+                              Масса, г
+                              <input
+                                aria-label={`Масса ингредиента ${index + 1}`}
+                                inputMode="decimal"
+                                type="number"
+                                min={0}
+                                max={5000}
+                                step="0.1"
+                                value={Math.round(item.grams * 10) / 10}
+                                onChange={(e) =>
+                                  changeComponentGrams(index, Number(e.target.value))
+                                }
+                              />
+                            </label>
+                            <button
+                              aria-label={`Увеличить массу ${index + 1}`}
+                              onClick={() => changeComponentGrams(index, (item.grams ?? 0) + 10)}
+                            >
+                              +
+                            </button>
+                          </>
+                        ) : (
+                          <span className="unknown-mass" aria-label="Масса соуса неизвестна">
+                            — г
+                          </span>
+                        )}
+                        <strong className="component-kcal">
+                          {componentCalories[index]} <small>ккал</small>
+                        </strong>
+                      </div>
+                    </section>
+                  ))}
+                </div>
+                <div className="result-summary" aria-label="Итого блюдо" aria-live="polite">
+                  <span>Итого</span>
+                  <div className="meal-total-values">
+                    <strong className="result-kcal">
+                      {Math.round(totals?.nutrients.kcal ?? 0)} <small>ккал</small>
+                    </strong>
+                    <strong
+                      className="result-grams"
+                      aria-label={
+                        totals?.sauceUnknown
+                          ? 'Известная масса без массы соуса'
+                          : 'Общая масса блюда'
+                      }
+                    >
+                      {totals?.sauceUnknown ? '≥ ' : ''}
+                      {displayGrams(totals?.mealGrams ?? 0)} <small>г</small>
+                    </strong>
+                  </div>
+                </div>
+                {reviewIssues.length > 0 && (
+                  <p className="error" role="alert">
+                    {reviewIssues[0].message}
+                  </p>
+                )}
+                <details
+                  className="analysis-check"
+                  onToggle={(event) => setReviewOpen(event.currentTarget.open)}
+                >
+                  <summary>
+                    {result.warnings.some((w) => w.includes('Ккал отличаются'))
+                      ? 'Проверить КБЖУ и состав'
+                      : 'Уточнить состав'}
+                  </summary>
+                  {reviewOpen && (
+                    <div>
+                      {result.warnings.map((warning, i) => (
+                        <p key={`warning-${i}`}>{warning}</p>
+                      ))}
+                      {result.clarifying_questions.map((item, i) => (
+                        <p key={`question-${i}`}>{item.question}</p>
+                      ))}
+                      {!editing && (
+                        <>
+                          <label>
+                            Уточнение
+                            <input
+                              value={hint}
+                              maxLength={500}
+                              placeholder="Например: рис 150 г готового, соуса нет"
+                              onChange={(e) => setHint(e.target.value)}
+                              disabled={busy}
+                            />
+                          </label>
+                          <p>Новый запрос к ИИ. Массу по фото лучше сверить на весах.</p>
+                          <button
+                            className="secondary"
+                            disabled={busy || !hint.trim()}
+                            onClick={() => void analyze()}
+                          >
+                            Повторить разбор
+                          </button>
+                        </>
+                      )}
+                      {editing &&
+                        !result.warnings.length &&
+                        !result.clarifying_questions.length && (
+                          <p>Исправьте массу выше или удалите лишний продукт.</p>
+                        )}
+                    </div>
+                  )}
+                </details>
+              </>
+            )}
+          </>
+        )}
+        {!onPick && favoriteDraft && !busy && (
+          <button type="button" className="secondary" onClick={() => setComposing(draftEntry())}>
+            ＋ Добавить продукт
+          </button>
+        )}
+        {busy ? (
+          <div className="analysis-busy" role="status">
+            <span className="spinner" />
+            <p>{slow ? 'Распознавание ещё выполняется…' : 'Распознаём фото…'}</p>
+            <button className="secondary" onClick={() => controller.current?.abort()}>
+              Отменить запрос
+            </button>
+          </div>
+        ) : result?.is_food ? (
+          <button
+            className="primary save-analysis"
+            disabled={
+              reviewIssues.length > 0 ||
+              !result.ingredients.length ||
+              !result.dish_name.trim() ||
+              (totals?.mealGrams ?? 0) <= 0
+            }
+            onClick={() => void save()}
+          >
+            {demo
+              ? onPick
+                ? 'Добавить демопродукт'
+                : 'Сохранить демозапись'
+              : onPick
+                ? 'Добавить продукт'
+                : 'Сохранить блюдо'}
+          </button>
+        ) : null}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+      </dialog>
+      {composing && (
+        <MealComposer
+          entry={composing}
+          day={day}
+          editing={!!editing}
+          initialCategory={composing.mealType}
+          onClose={() => setComposing(undefined)}
+          onSaved={onSaved}
+          renderPicker={(pick, close) => (
+            <AddFoodDialog day={day} onPick={pick} onClose={close} onSaved={close} />
+          )}
+        />
       )}
-    </dialog>
+    </>
   );
   function changeComponentGrams(index: number, grams: number) {
     const item = totals?.components[index];
