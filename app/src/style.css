@@ -2191,6 +2191,7 @@ input[type='time']::-webkit-datetime-edit {
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
+  width: max-content;
   max-width: calc(100% - 32px);
   pointer-events: auto;
   box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
