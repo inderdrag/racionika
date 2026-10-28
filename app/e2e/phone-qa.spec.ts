@@ -85,6 +85,8 @@ test('правка профиля сохраняет новую норму по�
 test('повреждённый новый JSON убирает старое preview и не меняет дневник', async ({ page }) => {
   await page.goto('/');
   await manual(page);
+  if (await page.locator('.calendar-toggle').isVisible())
+    await page.locator('.calendar-toggle').click();
   const day = await page.getByLabel('Дата дневника').inputValue();
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles(jsonFile(backup(day)));
@@ -102,6 +104,8 @@ test('повреждённый новый JSON убирает старое previ
 });
 test('отмена preview JSON не записывает ничего', async ({ page }) => {
   await page.goto('/');
+  if (await page.locator('.calendar-toggle').isVisible())
+    await page.locator('.calendar-toggle').click();
   const day = await page.getByLabel('Дата дневника').inputValue();
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles(jsonFile(backup(day)));
