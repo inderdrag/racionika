@@ -2175,3 +2175,50 @@ input[type='time']::-webkit-datetime-edit {
   color: var(--muted);
   font-weight: 400;
 }
+
+/* Transparent zero-height anchor: main scrolls behind the floating button, not a footer strip. */
+.diary-add-anchor {
+  position: relative;
+  flex: 0 0 0;
+  height: 0;
+  z-index: 9;
+  background: transparent;
+  pointer-events: none;
+}
+.diary-add-anchor > .fab {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: calc(100% - 32px);
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
+}
+main[data-tab='diary'] {
+  padding-bottom: 112px;
+}
+main[data-tab='diary'] {
+  scroll-padding-bottom: calc(5rem + 32px);
+}
+/* Keep the floating control from covering the middle of a very short, magnified view. */
+@media (max-height: 520px) {
+  .diary-add-anchor > .fab {
+    left: auto;
+    right: 16px;
+    transform: none;
+    width: 56px;
+    height: 56px;
+    min-height: 56px;
+    padding: 14px;
+    border-radius: 50%;
+  }
+  .diary-add-anchor > .fab > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
