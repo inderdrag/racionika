@@ -82,7 +82,7 @@ test('источник проходит экспорт и импорт JSON вм
   await page.getByLabel('Куда добавить', { exact: true }).selectOption('breakfast');
   await page.getByRole('button', { name: 'Добавить в дневник', exact: true }).click();
   await page.locator('.diary-entry details summary').click();
-  await page.getByRole('button', { name: 'В избранное', exact: true }).click();
+  await page.locator('.diary-entry .favorite-heart').click();
   await page.getByRole('button', { name: 'Профиль', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Экспортировать JSON' }).click();
